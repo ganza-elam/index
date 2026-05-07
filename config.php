@@ -4,10 +4,49 @@
  * Plain PHP MySQL Connection
  */
 
-$db_host = 'localhost';
-$db_name = 'elam_system';
-$db_user = 'root';
-$db_pass = '';
+function loadEnvFile($path) {
+    if (!is_readable($path)) {
+        return;
+    }
+
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines === false) {
+        return;
+    }
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+
+        $parts = explode('=', $line, 2);
+        if (count($parts) !== 2) {
+            continue;
+        }
+
+        $key = trim($parts[0]);
+        $value = trim($parts[1]);
+        $value = trim($value, "\"'");
+
+        if ($key !== '' && getenv($key) === false) {
+            putenv($key . '=' . $value);
+            $_ENV[$key] = $value;
+        }
+    }
+}
+
+function envValue($key, $default = null) {
+    $value = getenv($key);
+    return ($value === false || $value === '') ? $default : $value;
+}
+
+loadEnvFile(__DIR__ . '/.env');
+
+$db_host = envValue('DB_HOST', '127.0.0.1');
+$db_name = envValue('DB_NAME', 'elam_system');
+$db_user = envValue('DB_USER', 'root');
+$db_pass = envValue('DB_PASS', '');
 
 try {
     $pdo = new PDO(

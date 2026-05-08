@@ -9,4 +9,4 @@ RUN a2dismod mpm_event
 RUN a2enmod mpm_prefork
 COPY . /var/www/html/
 RUN docker-php-ext-install pdo pdo_mysql
-EXPOSE 443
+EXPOSE 80

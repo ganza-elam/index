@@ -43,14 +43,15 @@ function envValue($key, $default = null) {
 
 loadEnvFile(__DIR__ . '/.env');
 
-$db_host = envValue('MYSQLHOST', '127.0.0.1');
-$db_name = envValue('MYSQLDATABASE', 'elam_system');
-$db_user = envValue('MYSQLUSER', 'root');
-$db_pass = envValue('MYSQLPASSWORD', '');
+$db_host = envValue('DB_HOST', envValue('MYSQLHOST', '127.0.0.1'));
+$db_port = envValue('DB_PORT', envValue('MYSQLPORT', '3306'));
+$db_name = envValue('DB_NAME', envValue('MYSQLDATABASE', 'elam_system'));
+$db_user = envValue('DB_USER', envValue('MYSQLUSER', 'root'));
+$db_pass = envValue('DB_PASS', envValue('MYSQLPASSWORD', ''));
 
 try {
     $pdo = new PDO(
-        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
+        "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4",
         $db_user,
         $db_pass,
         [

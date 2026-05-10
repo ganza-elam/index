@@ -10,6 +10,7 @@ $currentUser = getCurrentUser();
 
 // Get all intara for dropdown
 $intaraList = getAllIntara($pdo);
+$monthOptions = imibareMonthOptions();
 $message = '';
 
 // Handle form submission
@@ -17,9 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_record'])) {
     $lesi = $_POST['lesi'] ?? '';
     $intara_id = $_POST['intara_id'] ?? '';
     $itorero_id = $_POST['itorero_id'] ?? '';
+    $month_val = isset($_POST['month']) ? (int) $_POST['month'] : 0;
+    // $ibindi = trim($_POST['ibindi'] ?? '');
     
     // Calculate sums
     $icyacumi = $_POST['icyacumi'] ?? '';
+    $ibindi = $_POST['ibindi'] ?? '';
     $icyacumi_cya_cms = $_POST['icyacumi_cya_cms'] ?? '';
     $amaturo = $_POST['amaturo'] ?? '';
     $amaturo_bya_cms = $_POST['amaturo_bya_cms'] ?? '';
@@ -33,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_record'])) {
     
     // Calculate totals
     $sumIcyacumi = sumValues($icyacumi);
+    $sumibindi = sumValues($ibindi);
     $sumIcyacumiCyaCms = sumValues($icyacumi_cya_cms);
     $sumAmaturo = sumAmaturo($amaturo);
     $sumAmaturoByaCms = sumAmaturo($amaturo_bya_cms);
@@ -44,18 +49,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_record'])) {
     $sumMifem = sumValues($mifem);
     $sumJa = sumValues($ja);
     
-    $total = $sumIcyacumi + $sumIcyacumiCyaCms + $sumAmaturo + $sumAmaturoByaCms + $sumUmusaruro + $sumIturo + 
+    $total = $sumIcyacumi + $sumibindi + $sumIcyacumiCyaCms + $sumAmaturo + $sumAmaturoByaCms + $sumUmusaruro + $sumIturo + 
              $sumFilide + $sumSs + $sumUbusonga + $sumMifem + $sumJa;
     
     if (empty($lesi)) {
         $message = '<div class="alert error">Shyiramo Numero ya lesi</div>';
     } elseif (empty($intara_id)) {
         $message = '<div class="alert error">Hitamo Intara</div>';
+    } elseif ($month_val < 1 || $month_val > 12) {
+        $message = '<div class="alert error">Hitamo ukwezi</div>';
     } else {
         $data = [
             'lesi' => $lesi,
             'intara_id' => $intara_id,
             'itorero_id' => $itorero_id ?: null,
+            'month' => $month_val,
+            //  'ibindi' => $ibindi !== '' ? $ibindi : null,
+            // Handle 'ibindi' the same way as other inputs: sum the values and store the formatted string and sum in $data
+            'ibindi' => format($ibindi),
+    
+            
             'icyacumi' => format($icyacumi),
             'icyacumi_cya_cms' => format($icyacumi_cya_cms),
             'amaturo' => format($amaturo, true),
@@ -154,7 +167,30 @@ function format($input, $isAmaturo = false) {
                 </select>
             </div>
 
+            <div class="form-group">
+                <label>Ukwezi:</label>
+                <select name="month" id="month" required>
+                    <option value="">-- Hitamo ukwezi --</option>
+                    <?php foreach ($monthOptions as $m => $label): ?>
+                        <option value="<?= (int) $m ?>"><?= htmlspecialchars($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Ibindi:</label>
+                <textarea name="ibindi" id="ibindi" rows="2" placeholder="Andika ibindi (nta ngombwa)"></textarea>
+            </div> -->
+
             <!-- Input Fields -->
+
+              <div class="form-group">
+                <label>ibindi:</label>
+                <div class="input-row">
+                    <input type="text" id="ibindi" name="ibindi" placeholder="Urugero: 1000+2000" oninput="calc()">
+                    <span class="sum">= <span id="s10">0</span></span>
+                </div>
+            </div>
             <div class="form-group">
                 <label>Icyacumi:</label>
                 <div class="input-row">
@@ -264,7 +300,7 @@ function format($input, $isAmaturo = false) {
 <script>
 // Store totals in memory
 let totals = {
-    icyacumi: 0, icyacumi_cya_cms: 0, amaturo: 0, amaturo_bya_cms: 0,
+      ibindi: 0,icyacumi: 0, icyacumi_cya_cms: 0, amaturo: 0, amaturo_bya_cms: 0,
     umusaruro: 0, ituro: 0, filide: 0, ss: 0, ubusonga: 0, mifem: 0, ja: 0
 };
 
@@ -293,6 +329,8 @@ function calc() {
     document.getElementById('s7').innerText = sumValues(document.getElementById('ubusonga').value);
     document.getElementById('s8').innerText = sumValues(document.getElementById('mifem').value);
     document.getElementById('s9').innerText = sumValues(document.getElementById('ja').value);
+    document.getElementById('s10').innerText = sumValues(document.getElementById('ibindi').value);
+
 }
 
 function loadItorero() {
@@ -320,6 +358,8 @@ function loadItorero() {
 
 function resetForm() {
     document.querySelectorAll('input').forEach(i => i.value = '');
+    document.getElementById('ibindi').value = '';
+    document.getElementById('month').value = '';
     document.getElementById('itorero').innerHTML = '<option value="">-- Hitamo Itorero --</option>';
     calc();
 }

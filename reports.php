@@ -32,9 +32,11 @@ if (isset($_GET['deleted']) && !$isGuest) {
 // Get filter values
 $filter_intara = $_GET['intara_id'] ?? '';
 $filter_itorero = $_GET['itorero_id'] ?? '';
+$filter_month = $_GET['month'] ?? '';
+$monthOptions = imibareMonthOptions();
 
-// Get data based on filters
-$imibareList = getImibare($pdo, $filter_intara, $filter_itorero);
+// Get data based on filters (month: empty = show all ukwezi)
+$imibareList = getImibare($pdo, $filter_intara, $filter_itorero, $filter_month !== '' ? $filter_month : null);
 $intaraList = getAllIntara($pdo);
 $itoreroList = getAllItorero($pdo);
 $intaraNameMap = [];
@@ -140,6 +142,17 @@ $totalsByItorero = getTotalsByItorero($pdo);
                 </select>
             </div>
             <div>
+                <label>Ukwezi:</label>
+                <select name="month" id="filter_month">
+                    <option value="">-- Byose / All months --</option>
+                    <?php foreach ($monthOptions as $m => $label): ?>
+                        <option value="<?= (int) $m ?>" <?= (string)$filter_month === (string)$m ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($label) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div>
                 <button type="submit">🔍 Search</button>
                 <button type="button" class="clear" onclick="clearFilters()">🔄 Clear</button>
                 <?php if (!$isGuest): ?>
@@ -233,6 +246,8 @@ $totalsByItorero = getTotalsByItorero($pdo);
                     <th>Lesi</th>
                     <th>Intara</th>
                     <th>Itorero</th>
+                    <th>Ukwezi</th>
+                    <th>Ibindi</th>
                     <th>Icyacumi</th>
                     <th>Icyacumi CMS</th>
                     <th>Amaturo</th>
@@ -257,6 +272,11 @@ $totalsByItorero = getTotalsByItorero($pdo);
                     <td><?= htmlspecialchars($record['lesi']) ?></td>
                     <td><?= htmlspecialchars($record['intara_name'] ?? '-') ?></td>
                     <td><?= htmlspecialchars($record['itorero_name'] ?? '-') ?></td>
+                    <td><?php
+                        $mk = isset($record['month']) ? (int) $record['month'] : 0;
+                        echo $mk >= 1 && $mk <= 12 ? htmlspecialchars($monthOptions[$mk]) : '-';
+                    ?></td>
+                    <td><?= htmlspecialchars($record['ibindi'] ?? '') ?></td>
                     <td><?= htmlspecialchars($record['icyacumi'] ?? '0') ?></td>
                     <td><?= htmlspecialchars($record['icyacumi_cya_cms'] ?? '0') ?></td>
                     <td><?= htmlspecialchars($record['amaturo'] ?? '0') ?></td>
@@ -284,7 +304,7 @@ $totalsByItorero = getTotalsByItorero($pdo);
             </tbody>
             <tfoot>
                 <tr style="background: #e8f5e9; font-weight: bold;">
-                    <td colspan="3">TOTAL</td>
+                    <td colspan="5">TOTAL</td>
                     <td><?= number_format($categoryTotals['icyacumi'], 0) ?></td>
                     <td><?= number_format($categoryTotals['icyacumi_cya_cms'], 0) ?></td>
                     <td><?= number_format($categoryTotals['amaturo'], 0) ?></td>
@@ -310,6 +330,7 @@ $totalsByItorero = getTotalsByItorero($pdo);
 <script>
 const INTARA_NAME_MAP = <?= json_encode($intaraNameMap, JSON_UNESCAPED_UNICODE) ?>;
 const ITORERO_NAME_MAP = <?= json_encode($itoreroNameMap, JSON_UNESCAPED_UNICODE) ?>;
+const MONTH_LABEL_MAP = <?= json_encode($monthOptions, JSON_UNESCAPED_UNICODE) ?>;
 
 // Filter Itorero based on selected Intara
 function loadItoreroFilter() {
@@ -339,6 +360,7 @@ function clearFilters() {
 function getSelectedFilterNames() {
     const intaraSelect = document.getElementById('filter_intara');
     const itoreroSelect = document.getElementById('filter_itorero');
+    const monthSelect = document.getElementById('filter_month');
 
     const intaraName = intaraSelect.value
         ? (INTARA_NAME_MAP[intaraSelect.value] || 'Selected-Intara')
@@ -346,8 +368,12 @@ function getSelectedFilterNames() {
     const itoreroName = itoreroSelect.value
         ? (ITORERO_NAME_MAP[itoreroSelect.value] || 'Selected-Itorero')
         : 'All-Itorero';
+    const monthNum = monthSelect.value;
+    const monthName = monthNum
+        ? (MONTH_LABEL_MAP[monthNum] || MONTH_LABEL_MAP[String(monthNum)] || 'Ukwezi-' + monthNum)
+        : 'All-months';
 
-    return { intaraName, itoreroName };
+    return { intaraName, itoreroName, monthName };
 }
 
 function sanitizeFilePart(value) {
@@ -362,11 +388,13 @@ function sanitizeFilePart(value) {
 function downloadExcel() {
     const intaraId = document.getElementById('filter_intara').value;
     const itoreroId = document.getElementById('filter_itorero').value;
+    const monthVal = document.getElementById('filter_month').value;
     
     let url = 'export_excel.php';
     let params = [];
     if (intaraId) params.push('intara_id=' + intaraId);
     if (itoreroId) params.push('itorero_id=' + itoreroId);
+    if (monthVal) params.push('month=' + encodeURIComponent(monthVal));
     if (params.length > 0) url += '?' + params.join('&');
     
     // Fetch data and generate Excel using SheetJS
@@ -384,8 +412,8 @@ function downloadExcel() {
             XLSX.utils.book_append_sheet(wb, ws, "Raporo");
             
             // Download the file
-            const { intaraName, itoreroName } = getSelectedFilterNames();
-            const filename = 'mapato_b_' + sanitizeFilePart(intaraName) + '_' + sanitizeFilePart(itoreroName) + '.xlsx';
+            const { intaraName, itoreroName, monthName } = getSelectedFilterNames();
+            const filename = 'mapato_b_' + sanitizeFilePart(intaraName) + '_' + sanitizeFilePart(itoreroName) + '_' + sanitizeFilePart(monthName) + '.xlsx';
             XLSX.writeFile(wb, filename);
         })
         .catch(error => {
@@ -397,6 +425,7 @@ function downloadExcel() {
 function downloadMapatoA() {
     const intaraId = document.getElementById('filter_intara').value;
     const itoreroId = document.getElementById('filter_itorero').value;
+    const monthVal = document.getElementById('filter_month').value;
 
     if (!intaraId) {
         alert('Banza uhitemo Intara kugira ngo ubone Download mapato A.');
@@ -406,6 +435,9 @@ function downloadMapatoA() {
     let url = 'export_mapato_a.php?intara_id=' + encodeURIComponent(intaraId);
     if (itoreroId) {
         url += '&itorero_id=' + encodeURIComponent(itoreroId);
+    }
+    if (monthVal) {
+        url += '&month=' + encodeURIComponent(monthVal);
     }
 
     fetch(url)
@@ -420,8 +452,8 @@ function downloadMapatoA() {
             const ws = XLSX.utils.aoa_to_sheet(data);
             XLSX.utils.book_append_sheet(wb, ws, "Mapato A");
 
-            const { intaraName, itoreroName } = getSelectedFilterNames();
-            const filename = 'mapato_a_' + sanitizeFilePart(intaraName) + '_' + sanitizeFilePart(itoreroName) + '.xlsx';
+            const { intaraName, itoreroName, monthName } = getSelectedFilterNames();
+            const filename = 'mapato_a_' + sanitizeFilePart(intaraName) + '_' + sanitizeFilePart(itoreroName) + '_' + sanitizeFilePart(monthName) + '.xlsx';
             XLSX.writeFile(wb, filename);
         })
         .catch(error => {

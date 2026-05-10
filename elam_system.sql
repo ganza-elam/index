@@ -32,6 +32,8 @@ CREATE TABLE `imibare` (
   `lesi` varchar(100) DEFAULT NULL,
   `intara_id` int(11) DEFAULT NULL,
   `itorero_id` int(11) DEFAULT NULL,
+  `month` tinyint unsigned DEFAULT NULL,
+  `ibindi` varchar(1000) DEFAULT NULL,
   `icyacumi` varchar(500) DEFAULT NULL,
   `icyacumi_cya_cms` varchar(500) DEFAULT NULL,
   `amaturo` varchar(500) DEFAULT NULL,
@@ -51,8 +53,8 @@ CREATE TABLE `imibare` (
 -- Dumping data for table `imibare`
 --
 
-INSERT INTO `imibare` (`id`, `lesi`, `intara_id`, `itorero_id`, `icyacumi`, `icyacumi_cya_cms`, `amaturo`, `amaturo_bya_cms`, `umusaruro`, `ituro`, `filide`, `ss`, `ubusonga`, `mifem`, `ja`, `total`, `created_at`) VALUES
-(1, '1', 1, 2, '10000,20000 = 30000', NULL, '3000,4000 = 7000 ÷ 2 = 3500', NULL, '4500,7500 = 12000', '7600,8400 = 16000', '6500,7899 = 14399', '3444,8999 = 12443', '76,78 = 154', '9999,759903 = 769902', '980,784 = 1764', 860162.00, '2026-04-23 21:58:34');
+INSERT INTO `imibare` (`id`, `lesi`, `intara_id`, `itorero_id`, `month`, `ibindi`, `icyacumi`, `icyacumi_cya_cms`, `amaturo`, `amaturo_bya_cms`, `umusaruro`, `ituro`, `filide`, `ss`, `ubusonga`, `mifem`, `ja`, `total`, `created_at`) VALUES
+(1, '1', 1, 2, 4, NULL, '10000,20000 = 30000', NULL, '3000,4000 = 7000 ÷ 2 = 3500', NULL, '4500,7500 = 12000', '7600,8400 = 16000', '6500,7899 = 14399', '3444,8999 = 12443', '76,78 = 154', '9999,759903 = 769902', '980,784 = 1764', 860162.00, '2026-04-23 21:58:34');
 
 -- --------------------------------------------------------
 
@@ -117,6 +119,12 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `created_at`, `updated_at`) VALUES
 (1, 'elam', 'elam@gmail.com', '$2y$10$wLcwTQLPHFJiqPN.FV/I8OlVoHXkK7KtczAdWkvV0/CNbr98tr8uu', '2026-04-28 10:02:49', '2026-04-28 10:02:49');
+INSERT INTO `users` (`id`, `username`, `email`, `password`, `created_at`, `updated_at`) VALUES
+(2, 'niyonsaba', 'niyonsaba@gmail.com', '$2y$10$sFkFAiBsAcVv1yZBEnw7eOB8iXKoQzOnLrctIbRGo6Eupq8zRiKVe', '2026-04-28 10:10:00', '2026-04-28 10:10:00');
+INSERT INTO `users` (`id`, `username`, `email`, `password`, `created_at`, `updated_at`) VALUES
+(3, 'elamu', 'elamu@gmail.com', '$2y$10$cwM6zrK9Plx/j.XkqZJTbe0pTS6bEHYwRiwO7nv.ZiG8psuR9pEj6', '2026-04-28 10:20:00', '2026-04-28 10:20:00');
+
+
 
 --
 -- Indexes for dumped tables
@@ -197,6 +205,8 @@ ALTER TABLE `itorero`
   ADD CONSTRAINT `itorero_ibfk_1` FOREIGN KEY (`intara_id`) REFERENCES `intara` (`id`) ON DELETE CASCADE;
 COMMIT;
 
+
+  
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

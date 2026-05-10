@@ -7,9 +7,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-define('GUEST_USERNAME', envValue('GUEST_USERNAME', 'guest'));
-define('GUEST_EMAIL', envValue('GUEST_EMAIL', 'guest@elamsystem.local'));
-define('GUEST_PASSWORD', envValue('GUEST_PASSWORD', 'change_me_guest_password'));
+const GUEST_USERNAME = 'guest';
+const GUEST_EMAIL = 'guest@elamsystem.local';
+const GUEST_PASSWORD = 'Guest@123';
 
 function ensureUsersRoleColumn($pdo) {
     static $checked = false;

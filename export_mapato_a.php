@@ -11,6 +11,7 @@ if (isGuestUser()) {
 
 $intara_id = $_GET['intara_id'] ?? null;
 $itorero_id = $_GET['itorero_id'] ?? null;
+$month_filter = $_GET['month'] ?? null;
 
 if (!$intara_id) {
     header('Content-Type: application/json; charset=utf-8');
@@ -20,22 +21,32 @@ if (!$intara_id) {
 
 $selectedIntaraName = getSelectedName($pdo, 'intara', $intara_id);
 $selectedItoreroName = getSelectedName($pdo, 'itorero', $itorero_id);
+$monthOptions = imibareMonthOptions();
+$selectedMonthLabel = null;
+if ($month_filter !== null && $month_filter !== '') {
+    $mi = (int) $month_filter;
+    if ($mi >= 1 && $mi <= 12) {
+        $selectedMonthLabel = $monthOptions[$mi];
+    }
+}
 
-$imibareList = getImibare($pdo, $intara_id, $itorero_id);
+$imibareList = getImibare($pdo, $intara_id, $itorero_id, $month_filter);
 
 $excelData = [
     ['SEVENTH DAY ADVENTIST CHURCH'],
     ['MAPATO A'],
     ['INTARA: ' . ($selectedIntaraName ?? 'All Intara')],
     ['ITORERO: ' . ($selectedItoreroName ?? 'All Itorero')],
+    ['UKWEZI: ' . ($selectedMonthLabel ?? 'All months')],
     // ['Raporo - Generated: ' . date('d/m/Y H:i')],
     [],
-    ['Intara', 'Itorero', 'Umubare w\'ibyanditswe', 'Icyacumi', 'Icyacumi cya CMS', 'Amaturo', 'Amaturo bya CMS', 'Umusaruro', 'Ituro', 'Filide', 'SS', 'Ubusonga', 'Mifem', 'JA', 'Grand Total']
+    ['Intara', 'Itorero', 'Umubare w\'ibyanditswe', 'Icyacumi', 'Ibindi', 'Icyacumi cya CMS', 'Amaturo', 'Amaturo bya CMS', 'Umusaruro', 'Ituro', 'Filide', 'SS', 'Ubusonga', 'Mifem', 'JA', 'Grand Total']
 ];
 
 $totalsByItorero = [];
 $overallCategoryTotals = [
     'icyacumi' => 0,
+    'ibindi' => 0,
     'icyacumi_cya_cms' => 0,
     'amaturo' => 0,
     'amaturo_bya_cms' => 0,
@@ -56,6 +67,7 @@ foreach ($imibareList as $row) {
             'itorero_name' => $row['itorero_name'] ?? '-',
             'record_count' => 0,
             'icyacumi' => 0,
+            'ibindi' => 0,
             'icyacumi_cya_cms' => 0,
             'amaturo' => 0,
             'amaturo_bya_cms' => 0,
@@ -72,6 +84,7 @@ foreach ($imibareList as $row) {
 
     $totalsByItorero[$itoreroId]['record_count']++;
     $totalsByItorero[$itoreroId]['icyacumi'] += extractSum($row['icyacumi']);
+    $totalsByItorero[$itoreroId]['ibindi'] += extractSum($row['ibindi']);
     $totalsByItorero[$itoreroId]['icyacumi_cya_cms'] += extractSum($row['icyacumi_cya_cms']);
     $totalsByItorero[$itoreroId]['amaturo'] += extractSum($row['amaturo']);
     $totalsByItorero[$itoreroId]['amaturo_bya_cms'] += extractSum($row['amaturo_bya_cms']);
@@ -91,6 +104,7 @@ foreach ($totalsByItorero as $itoreroTotals) {
         $itoreroTotals['itorero_name'],
         $itoreroTotals['record_count'],
         $itoreroTotals['icyacumi'],
+        $itoreroTotals['ibindi'],
         $itoreroTotals['icyacumi_cya_cms'],
         $itoreroTotals['amaturo'],
         $itoreroTotals['amaturo_bya_cms'],
@@ -105,6 +119,7 @@ foreach ($totalsByItorero as $itoreroTotals) {
     ];
 
     $overallCategoryTotals['icyacumi'] += $itoreroTotals['icyacumi'];
+    $overallCategoryTotals['ibindi'] += $itoreroTotals['ibindi'];
     $overallCategoryTotals['icyacumi_cya_cms'] += $itoreroTotals['icyacumi_cya_cms'];
     $overallCategoryTotals['amaturo'] += $itoreroTotals['amaturo'];
     $overallCategoryTotals['amaturo_bya_cms'] += $itoreroTotals['amaturo_bya_cms'];
@@ -123,6 +138,7 @@ $excelData[] = [
     '',
     '',
     $overallCategoryTotals['icyacumi'],
+    $overallCategoryTotals['ibindi'],
     $overallCategoryTotals['icyacumi_cya_cms'],
     $overallCategoryTotals['amaturo'],
     $overallCategoryTotals['amaturo_bya_cms'],

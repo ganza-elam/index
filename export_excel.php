@@ -16,12 +16,21 @@ if (isGuestUser()) {
 
 $intara_id = $_GET['intara_id'] ?? null;
 $itorero_id = $_GET['itorero_id'] ?? null;
+$month_filter = $_GET['month'] ?? null;
 
 $selectedIntaraName = getSelectedName($pdo, 'intara', $intara_id);
 $selectedItoreroName = getSelectedName($pdo, 'itorero', $itorero_id);
+$monthOptions = imibareMonthOptions();
+$selectedMonthLabel = null;
+if ($month_filter !== null && $month_filter !== '') {
+    $mi = (int) $month_filter;
+    if ($mi >= 1 && $mi <= 12) {
+        $selectedMonthLabel = $monthOptions[$mi];
+    }
+}
 
 // Get data
-$imibareList = getImibare($pdo, $intara_id, $itorero_id);
+$imibareList = getImibare($pdo, $intara_id, $itorero_id, $month_filter);
 
 // Build Excel data as array of arrays
 $excelData = [
@@ -31,9 +40,10 @@ $excelData = [
 
     ['INTARA: ' . ($selectedIntaraName ?? 'All Intara')],
     ['ITORERO: ' . ($selectedItoreroName ?? 'All Itorero')],
+    ['UKWEZI: ' . ($selectedMonthLabel ?? 'All months')],
     // ['Raporo - Generated: ' . date('d/m/Y H:i')],
     [],
-    ['Lesi', 'Intara', 'Itorero', 'Icyacumi', 'Icyacumi cya CFMS', 'Amaturo', 'Amaturo ya CFMS', 'Umusaruro', 'Ituro', 'Filide', 'SS', 'Ubusonga', 'Mifem', 'JA', 'Total', 'Itariki']
+    ['Lesi', 'Intara', 'Itorero', 'Ukwezi', 'Ibindi', 'Icyacumi', 'Icyacumi cya CFMS', 'Amaturo', 'Amaturo ya CFMS', 'Umusaruro', 'Ituro', 'Filide', 'SS', 'Ubusonga', 'Mifem', 'JA', 'Total', 'Itariki']
 ];
 
 $categoryTotals = [
@@ -44,10 +54,14 @@ $categoryTotals = [
 $grandTotal = 0;
 
 foreach ($imibareList as $record) {
+    $mk = isset($record['month']) ? (int) $record['month'] : 0;
+    $monthCell = ($mk >= 1 && $mk <= 12) ? $monthOptions[$mk] : '-';
     $excelData[] = [
         $record['lesi'],
         $record['intara_name'] ?? '-',
         $record['itorero_name'] ?? '-',
+        $monthCell,
+        $record['ibindi'] ?? '',
         extractSum($record['icyacumi']),
         extractSum($record['icyacumi_cya_cms']),
         extractSum($record['amaturo']),
@@ -80,6 +94,8 @@ foreach ($imibareList as $record) {
 // Add totals row
 $excelData[] = [
     'TOTAL',
+    '',
+    '',
     '',
     '',
     $categoryTotals['icyacumi'],

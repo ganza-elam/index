@@ -4,54 +4,14 @@
  * Plain PHP MySQL Connection
  */
 
-function loadEnvFile($path) {
-    if (!is_readable($path)) {
-        return;
-    }
-
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    if ($lines === false) {
-        return;
-    }
-
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) {
-            continue;
-        }
-
-        $parts = explode('=', $line, 2);
-        if (count($parts) !== 2) {
-            continue;
-        }
-
-        $key = trim($parts[0]);
-        $value = trim($parts[1]);
-        $value = trim($value, "\"'");
-
-        if ($key !== '' && getenv($key) === false) {
-            putenv($key . '=' . $value);
-            $_ENV[$key] = $value;
-        }
-    }
-}
-
-function envValue($key, $default = null) {
-    $value = getenv($key);
-    return ($value === false || $value === '') ? $default : $value;
-}
-
-loadEnvFile(__DIR__ . '/.env');
-
-$db_host = envValue('DB_HOST', envValue('MYSQLHOST', '127.0.0.1'));
-$db_port = envValue('DB_PORT', envValue('MYSQLPORT', '3306'));
-$db_name = envValue('DB_NAME', envValue('MYSQLDATABASE', 'elam_system'));
-$db_user = envValue('DB_USER', envValue('MYSQLUSER', 'root'));
-$db_pass = envValue('DB_PASS', envValue('MYSQLPASSWORD', ''));
+$db_host = 'localhost';
+$db_name = 'elam_system';
+$db_user = 'root';
+$db_pass = '';
 
 try {
     $pdo = new PDO(
-        "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4",
+        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
         $db_user,
         $db_pass,
         [
@@ -62,6 +22,24 @@ try {
     );
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
+}
+
+/** Month keys 1–12 for dropdowns / filters (labels in Kinyarwanda) */
+function imibareMonthOptions(): array {
+    return [
+        1 => 'Mutarama',
+        2 => 'Gashyantare',
+        3 => 'Werurwe',
+        4 => 'Mata',
+        5 => 'Gicurasi',
+        6 => 'Kamena',
+        7 => 'Nyakanga',
+        8 => 'Kanama',
+        9 => 'Nzeli',
+        10 => 'Ukwakira',
+        11 => 'Ugushyingo',
+        12 => 'Ukuboza',
+    ];
 }
 
 /**
@@ -168,14 +146,17 @@ function hasImibareForItorero($pdo, $itorero_id) {
  */
 function saveImibare($pdo, $data) {
     $stmt = $pdo->prepare("INSERT INTO imibare (
-        lesi, intara_id, itorero_id, icyacumi, icyacumi_cya_cms, amaturo, amaturo_bya_cms,
+        lesi, intara_id, itorero_id, month, ibindi,
+        icyacumi, icyacumi_cya_cms, amaturo, amaturo_bya_cms,
         umusaruro, ituro, filide, ss, ubusonga, mifem, ja, total
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
     return $stmt->execute([
         $data['lesi'],
         $data['intara_id'],
         $data['itorero_id'],
+        $data['month'],
+        $data['ibindi'],
         $data['icyacumi'],
         $data['icyacumi_cya_cms'],
         $data['amaturo'],
@@ -205,7 +186,7 @@ function getImibareById($pdo, $id) {
  */
 function updateImibare($pdo, $id, $data) {
     $stmt = $pdo->prepare("UPDATE imibare SET
-        lesi = ?, intara_id = ?, itorero_id = ?, icyacumi = ?, icyacumi_cya_cms = ?, amaturo = ?, amaturo_bya_cms = ?,
+        lesi = ?, intara_id = ?, itorero_id = ?, month = ?, ibindi = ?, icyacumi = ?, icyacumi_cya_cms = ?, amaturo = ?, amaturo_bya_cms = ?,
         umusaruro = ?, ituro = ?, filide = ?, ss = ?, ubusonga = ?, mifem = ?, ja = ?, total = ?
         WHERE id = ?");
 
@@ -213,6 +194,8 @@ function updateImibare($pdo, $id, $data) {
         $data['lesi'],
         $data['intara_id'],
         $data['itorero_id'],
+        $data['month'],
+        $data['ibindi'],
         $data['icyacumi'],
         $data['icyacumi_cya_cms'],
         $data['amaturo'],
@@ -240,7 +223,7 @@ function deleteImibare($pdo, $id) {
 /**
  * Get all Imibare records with optional filters
  */
-function getImibare($pdo, $intara_id = null, $itorero_id = null) {
+function getImibare($pdo, $intara_id = null, $itorero_id = null, $month = null) {
     $sql = "SELECT i.*, intara.name as intara_name, itorero.name as itorero_name 
             FROM imibare i 
             LEFT JOIN intara ON i.intara_id = intara.id 
@@ -257,6 +240,14 @@ function getImibare($pdo, $intara_id = null, $itorero_id = null) {
     if ($itorero_id) {
         $sql .= " AND i.itorero_id = ?";
         $params[] = $itorero_id;
+    }
+
+    if ($month !== null && $month !== '' && $month !== false) {
+        $monthInt = (int) $month;
+        if ($monthInt >= 1 && $monthInt <= 12) {
+            $sql .= " AND i.month = ?";
+            $params[] = $monthInt;
+        }
     }
     
     $sql .= " ORDER BY i.created_at DESC";

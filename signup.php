@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
 <body>
     <div class="signup-container">
         <div class="brand-header">
-            <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
+            <img class="brand-logo" src="sda.png" alt="Adventist logo">
             <div class="brand-text">
                 <h2>Adventist ELAM</h2>
                 <small>Create your account to continue</small>

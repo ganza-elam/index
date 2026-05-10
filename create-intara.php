@@ -70,7 +70,7 @@ if (isset($_GET['created']) && isset($_GET['id'])) {
 <body>
 <div class="container">
     <div class="brand-header">
-        <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
+        <img class="brand-logo" src="sda.png" alt="Adventist logo">
         <div class="brand-text">
             <h2>Seventh Day Adventist Church</h2>
             <small>Stewardship and offerings management</small>

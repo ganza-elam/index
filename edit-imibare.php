@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
 <body>
 <div class="container">
     <div class="brand-header">
-        <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
+        <img class="brand-logo" src="sda.png" alt="Adventist logo">
         <div class="brand-text">
             <h2>Seventh Day Adventist church</h2>
             <small>Stewardship and offerings management</small>

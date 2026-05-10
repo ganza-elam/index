@@ -19,6 +19,7 @@ if (!$record) {
 
 $intaraList = getAllIntara($pdo);
 $itoreroList = getItoreroByIntara($pdo, $record['intara_id']);
+$monthOptions = imibareMonthOptions();
 $message = '';
 
 function sumValues($val) {
@@ -51,7 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
     $lesi = trim($_POST['lesi'] ?? '');
     $intara_id = $_POST['intara_id'] ?? '';
     $itorero_id = $_POST['itorero_id'] ?? '';
-
+    $month_val = isset($_POST['month']) ? (int) $_POST['month'] : 0;
+    // $ibindi = trim($_POST['ibindi'] ?? '');
+    $ibindi = $_POST['ibindi'] ?? '';
     $icyacumi = trim($_POST['icyacumi'] ?? '');
     $icyacumi_cya_cms = trim($_POST['icyacumi_cya_cms'] ?? '');
     $amaturo = trim($_POST['amaturo'] ?? '');
@@ -65,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
     $ja = trim($_POST['ja'] ?? '');
 
     $sumIcyacumi = sumValues($icyacumi);
+    $sumibindi = sumValues($ibindi);
     $sumIcyacumiCyaCms = sumValues($icyacumi_cya_cms);
     $sumAmaturo = sumAmaturo($amaturo);
     $sumAmaturoByaCms = sumAmaturo($amaturo_bya_cms);
@@ -76,18 +80,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
     $sumMifem = sumValues($mifem);
     $sumJa = sumValues($ja);
 
-    $total = $sumIcyacumi + $sumIcyacumiCyaCms + $sumAmaturo + $sumAmaturoByaCms + $sumUmusaruro + $sumIturo +
+    $total = $sumIcyacumi + $sumibindi + $sumIcyacumiCyaCms + $sumAmaturo + $sumAmaturoByaCms + $sumUmusaruro + $sumIturo +
              $sumFilide + $sumSs + $sumUbusonga + $sumMifem + $sumJa;
 
     if ($lesi === '') {
         $message = '<div class="alert error">Shyiramo Numero ya lesi</div>';
     } elseif ($intara_id === '') {
         $message = '<div class="alert error">Hitamo Intara</div>';
+    } elseif ($month_val < 1 || $month_val > 12) {
+        $message = '<div class="alert error">Hitamo ukwezi</div>';
     } else {
         $data = [
             'lesi' => $lesi,
             'intara_id' => $intara_id,
             'itorero_id' => $itorero_id ?: null,
+            'month' => $month_val,
+            'ibindi' => formatField($ibindi),
             'icyacumi' => formatField($icyacumi),
             'icyacumi_cya_cms' => formatField($icyacumi_cya_cms),
             'amaturo' => formatField($amaturo, true),
@@ -167,7 +175,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
                 </select>
             </div>
 
+            <div class="form-group">
+                <label>Ukwezi:</label>
+                <select name="month" id="month" required>
+                    <option value="">-- Hitamo ukwezi --</option>
+                    <?php foreach ($monthOptions as $m => $label): ?>
+                        <option value="<?= (int) $m ?>" <?= (isset($record['month']) && (string)$record['month'] === (string)$m) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($label) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Ibindi:</label>
+                <textarea name="ibindi" id="ibindi" rows="2"><?= htmlspecialchars($record['ibindi'] ?? '') ?></textarea>
+            </div> -->
+
             <div class="form-group"><label>Icyacumi:</label><input type="text" id="icyacumi" name="icyacumi" value="<?= htmlspecialchars(parseStoredInput($record['icyacumi'])) ?>"></div>
+            <div class="form-group"><label>Ibindi:</label><input type="text" id="ibindi" name="ibindi" value="<?= htmlspecialchars(parseStoredInput($record['ibindi'])) ?>"></div>
             <div class="form-group"><label>Icyacumi cya CFMS:</label><input type="text" id="icyacumi_cya_cms" name="icyacumi_cya_cms" value="<?= htmlspecialchars(parseStoredInput($record['icyacumi_cya_cms'])) ?>"></div>
             <div class="form-group"><label>Amaturo:</label><input type="text" id="amaturo" name="amaturo" value="<?= htmlspecialchars(parseStoredInput($record['amaturo'])) ?>"></div>
             <div class="form-group"><label>Amaturo bya CFMS:</label><input type="text" id="amaturo_bya_cms" name="amaturo_bya_cms" value="<?= htmlspecialchars(parseStoredInput($record['amaturo_bya_cms'])) ?>"></div>

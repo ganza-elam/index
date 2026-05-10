@@ -31,7 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ingiro - elamSystem</title>
+    <title>Ingiro - Church Ledger</title>
+    <link rel="icon" type="image/png" href="sda.png">
     <link rel="stylesheet" href="styles.css">
     <style>
         body {
@@ -99,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
         </div>
         <div class="login-container">
             <div class="brand-header">
-                <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
+                <img class="brand-logo" src="sda.png" alt="Adventist logo">
                 <div class="brand-text">
                     <h2>Seventh Day Adventist Church</h2>
                     <small>Faithful stewardship reporting</small>

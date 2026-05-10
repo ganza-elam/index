@@ -113,7 +113,8 @@ function format($input, $isAmaturo = false) {
 <!DOCTYPE html>
 <html>
 <head>
-    
+    <title>Imibare y'Ituro - Church Ledger</title>
+    <link rel="icon" type="image/png" href="sda.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="styles.css">

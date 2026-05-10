@@ -34,7 +34,8 @@ if (isset($_GET['created']) && isset($_GET['id'])) {
 <!DOCTYPE html>
 <html>
 <head>
-    
+    <title>Intara - Church Ledger</title>
+    <link rel="icon" type="image/png" href="sda.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
     <style>

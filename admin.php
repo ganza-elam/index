@@ -115,7 +115,8 @@ $usersList = getAllUsers($pdo);
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Gererera Intara na Itorero - elamSystem</title>
+    <title>Gererera Intara na Itorero - Church Ledger</title>
+    <link rel="icon" type="image/png" href="sda.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
     <style>

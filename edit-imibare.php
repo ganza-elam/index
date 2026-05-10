@@ -121,7 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
 <!DOCTYPE html>
 <html>
 <head>
-    
+    <title>Hindura Imibare - Church Ledger</title>
+    <link rel="icon" type="image/png" href="sda.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
 </head>

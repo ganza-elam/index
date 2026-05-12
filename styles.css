@@ -592,7 +592,8 @@ tfoot td {
 /* Password input with show/hide toggle */
 .password-wrapper {
     position: relative;
-    display: block;
+    display: flex;
+    align-items: center;
 }
 .password-wrapper input[type="password"],
 .password-wrapper input[type="text"] {
@@ -602,16 +603,16 @@ tfoot td {
 .password-toggle {
     position: absolute;
     top: 50%;
-    right: 8px;
+    right: 10px;
     transform: translateY(-50%);
     background: none;
-    border: none;
+    border: 1px solid #ccc;
     padding: 4px;
     margin: 0;
     cursor: pointer;
     color: #666;
     line-height: 0;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 4px;
@@ -625,9 +626,9 @@ tfoot td {
     outline-offset: 1px;
 }
 .password-toggle svg {
-    width: 18px;
-    height: 18px;
-    display: block;
+    width: 20px;
+    height: 20px;
+    /* display: block; */
 }
 .password-toggle .icon-hide { display: none; }
 .password-toggle[data-shown="true"] .icon-show { display: none; }

@@ -602,20 +602,15 @@ tfoot td {
 }
 .password-toggle {
     position: absolute;
-    top: 50%;
     right: 10px;
-    transform: translateY(-50%);
     background: none;
     border: 1px solid #ccc;
-    padding: 4px;
-    margin: 0;
+    border-radius: 6px;
     cursor: pointer;
-    color: #666;
-    line-height: 0;
+    padding: 4px 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
 }
 .password-toggle:hover {
     color: #1a73e8;

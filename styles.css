@@ -588,3 +588,53 @@ tfoot tr {
 tfoot td {
     color: #333;
 }
+
+/* Password input with show/hide toggle */
+.password-wrapper {
+    position: relative;
+    display: block;
+}
+.password-wrapper input[type="password"],
+.password-wrapper input[type="text"] {
+    width: 100%;
+    padding-right: 42px;
+}
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 4px;
+    margin: 0;
+    cursor: pointer;
+    color: #666;
+    line-height: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+.password-toggle:hover {
+    color: #1a73e8;
+    background: rgba(26, 115, 232, 0.08);
+}
+.password-toggle:focus {
+    outline: 2px solid #1a73e8;
+    outline-offset: 1px;
+}
+.password-toggle svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+.password-toggle .icon-hide { display: none; }
+.password-toggle[data-shown="true"] .icon-show { display: none; }
+.password-toggle[data-shown="true"] .icon-hide { display: block; }
+
+/* Keep .form-row flex behaviour when the input is wrapped */
+.form-row .password-wrapper {
+    flex: 1;
+    min-width: 200px;
+}

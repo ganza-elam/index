@@ -2,14 +2,18 @@
 require_once 'config.php';
 require_once 'auth.php';
 requireLogin();
-if (isGuestUser()) {
-    http_response_code(403);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([]);
-    exit;
-}
 
 $intara_id = $_GET['intara_id'] ?? null;
+if (isGuestUser()) {
+    $assigned = getGuestIntaraId();
+    if ($assigned === null) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([]);
+        exit;
+    }
+    $intara_id = (string) $assigned;
+}
 $itorero_id = $_GET['itorero_id'] ?? null;
 $month_filter = $_GET['month'] ?? null;
 
@@ -40,7 +44,7 @@ $excelData = [
     ['UKWEZI: ' . ($selectedMonthLabel ?? 'All months')],
     // ['Raporo - Generated: ' . date('d/m/Y H:i')],
     [],
-    ['Intara', 'Itorero', 'Umubare w\'ibyanditswe', 'Icyacumi', 'Ibindi', 'Icyacumi cya CMS', 'Amaturo', 'Amaturo bya CMS', 'Umusaruro', 'Ituro', 'Filide', 'SS', 'Ubusonga', 'Mifem', 'JA', 'Grand Total']
+    ['Intara', 'Itorero', 'Umubare w\'ibyanditswe', 'Icyacumi', 'Ibindi', 'Icyacumi cya CFMS', 'Total Icyacumi(RECU&CFMS)', 'Amaturo', 'Amaturo ya CFMS', 'total(RECU&CFMS)', 'Umusaruro', 'Ituro ryiteraniro rikuru', 'inyubako ya Filide', 'SS Lesson', 'Udutabo twUbusonga', 'Udutabo twa Mifem', 'Udutabo twa JA', 'Grand Total']
 ];
 
 $totalsByItorero = [];
@@ -99,6 +103,8 @@ foreach ($imibareList as $row) {
 }
 
 foreach ($totalsByItorero as $itoreroTotals) {
+    $totalIcyacumiPair = $itoreroTotals['icyacumi'] + $itoreroTotals['icyacumi_cya_cms'];
+    $totalAmaturoPair = $itoreroTotals['amaturo'] + $itoreroTotals['amaturo_bya_cms'];
     $excelData[] = [
         $selectedIntaraName ?? '-',
         $itoreroTotals['itorero_name'],
@@ -106,8 +112,10 @@ foreach ($totalsByItorero as $itoreroTotals) {
         $itoreroTotals['icyacumi'],
         $itoreroTotals['ibindi'],
         $itoreroTotals['icyacumi_cya_cms'],
+        $totalIcyacumiPair,
         $itoreroTotals['amaturo'],
         $itoreroTotals['amaturo_bya_cms'],
+        $totalAmaturoPair,
         $itoreroTotals['umusaruro'],
         $itoreroTotals['ituro'],
         $itoreroTotals['filide'],
@@ -133,6 +141,8 @@ foreach ($totalsByItorero as $itoreroTotals) {
     $overallGrandTotal += $itoreroTotals['grand_total'];
 }
 
+$overallTotalIcyacumiPair = $overallCategoryTotals['icyacumi'] + $overallCategoryTotals['icyacumi_cya_cms'];
+$overallTotalAmaturoPair = $overallCategoryTotals['amaturo'] + $overallCategoryTotals['amaturo_bya_cms'];
 $excelData[] = [
     'TOTAL',
     '',
@@ -140,8 +150,10 @@ $excelData[] = [
     $overallCategoryTotals['icyacumi'],
     $overallCategoryTotals['ibindi'],
     $overallCategoryTotals['icyacumi_cya_cms'],
+    $overallTotalIcyacumiPair,
     $overallCategoryTotals['amaturo'],
     $overallCategoryTotals['amaturo_bya_cms'],
+    $overallTotalAmaturoPair,
     $overallCategoryTotals['umusaruro'],
     $overallCategoryTotals['ituro'],
     $overallCategoryTotals['filide'],

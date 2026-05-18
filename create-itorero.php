@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'auth.php';
+require_once __DIR__ . '/includes/icons.php';
 
 // Require admin access for creation
 requireAdmin();
@@ -52,9 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_itorero'])) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Itorero - Church Ledger</title>
-    <link rel="icon" type="image/png" href="sda.png">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php require __DIR__ . '/includes/material-icons-head.php'; ?>
     <link rel="stylesheet" href="styles.css">
     <style>
         .container { max-width: 700px; margin: 30px auto; }
@@ -98,25 +99,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_itorero'])) {
 
 <div class="container">
     <div class="brand-header">
-        <img class="brand-logo" src="sda.png" alt="Adventist logo">
+        <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
         <div class="brand-text">
             <h2>Seventh Day Adventist Church</h2>
             <small>Stewardship and offerings management</small>
         </div>
     </div>
-    <div class="nav">
-        <a href="index.php">📝 Insert data</a>
-        <a href="admin.php">⚙️ Admin portal</a>
-        <a href="reports.php">📊 Report</a>
-    </div>
+    <?php require __DIR__ . '/includes/nav.php'; ?>
 
     <?= $message ?>
 
     <div class="intara-badge">
-        📍 Intara: <?= htmlspecialchars($intara['name']) ?>
+        <?= mi('place', 18) ?> Intara: <?= htmlspecialchars($intara['name']) ?>
     </div>
 
-    <h1>🏛️ Create Itorero</h1>
+    <h1><?= mi('church', 28) ?> Create Itorero</h1>
     
     <!-- Add New Itorero Form -->
     <div class="form-section">

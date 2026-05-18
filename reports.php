@@ -1,6 +1,27 @@
 <?php
 require_once 'config.php';
 require_once 'auth.php';
+require_once __DIR__ . '/includes/icons.php';
+
+define('REPORTS_PER_PAGE', 15);
+
+function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_month) {
+    $params = [];
+    if ($filter_intara !== '') {
+        $params['intara_id'] = $filter_intara;
+    }
+    if ($filter_itorero !== '') {
+        $params['itorero_id'] = $filter_itorero;
+    }
+    if ($filter_month !== '') {
+        $params['month'] = $filter_month;
+    }
+    if ($page > 1) {
+        $params['page'] = $page;
+    }
+    $query = http_build_query($params);
+    return 'reports.php' . ($query !== '' ? '?' . $query : '');
+}
 
 // Require login before accessing this page
 requireLogin();
@@ -8,10 +29,15 @@ requireLogin();
 // Get current user
 $currentUser = getCurrentUser();
 $isGuest = isGuestUser();
+$guestIntaraId = getGuestIntaraId();
 
 $message = '';
 if ($isGuest) {
-    $message = '<div class="alert success">Guest mode: view only. You can view final reports but cannot edit admin data.</div>';
+    if ($guestIntaraId === null) {
+        $message = '<div class="alert error">Konti yawe nta Intara ifite. Saba admin aguhe Intara.</div>';
+    } else {
+        $message = '<div class="alert success">Guest mode: ureba reports z\'Intara yawe gusa (view only).</div>';
+    }
 }
 if (isset($_GET['updated']) && !$isGuest) {
     $message = '<div class="alert success">Record updated successfully.</div>';
@@ -33,12 +59,33 @@ if (isset($_GET['deleted']) && !$isGuest) {
 $filter_intara = $_GET['intara_id'] ?? '';
 $filter_itorero = $_GET['itorero_id'] ?? '';
 $filter_month = $_GET['month'] ?? '';
+
+if ($isGuest && $guestIntaraId !== null) {
+    $filter_intara = (string) $guestIntaraId;
+    if ($filter_itorero !== '') {
+        $stmt = $pdo->prepare("SELECT id FROM itorero WHERE id = ? AND intara_id = ?");
+        $stmt->execute([(int) $filter_itorero, $guestIntaraId]);
+        if (!$stmt->fetch()) {
+            $filter_itorero = '';
+        }
+    }
+}
+
 $monthOptions = imibareMonthOptions();
 
 // Get data based on filters (month: empty = show all ukwezi)
-$imibareList = getImibare($pdo, $filter_intara, $filter_itorero, $filter_month !== '' ? $filter_month : null);
+if ($isGuest && $guestIntaraId === null) {
+    $imibareList = [];
+} else {
+    $imibareList = getImibare($pdo, $filter_intara, $filter_itorero, $filter_month !== '' ? $filter_month : null);
+}
 $intaraList = getAllIntara($pdo);
 $itoreroList = getAllItorero($pdo);
+
+if ($isGuest && $guestIntaraId !== null) {
+    $intaraList = array_values(array_filter($intaraList, fn($i) => (int) $i['id'] === $guestIntaraId));
+    $itoreroList = array_values(array_filter($itoreroList, fn($i) => (int) $i['intara_id'] === $guestIntaraId));
+}
 $intaraNameMap = [];
 foreach ($intaraList as $intaraItem) {
     $intaraNameMap[(string) $intaraItem['id']] = $intaraItem['name'];
@@ -51,7 +98,9 @@ foreach ($itoreroList as $itoreroItem) {
 // Calculate totals
 $grandTotal = 0;
 $categoryTotals = [
-    'icyacumi' => 0, 'icyacumi_cya_cms' => 0, 'amaturo' => 0, 'amaturo_bya_cms' => 0,
+    'ibindi' => 0,
+    'icyacumi' => 0, 'icyacumi_cya_cms' => 0, 'total_icyacumi_pair' => 0, 'amaturo' => 0, 'amaturo_bya_cms' => 0,
+    'total_amaturo_pair' => 0,
     'umusaruro' => 0, 'ituro' => 0, 'filide' => 0, 'ss' => 0, 'ubusonga' => 0, 'mifem' => 0, 'ja' => 0
 ];
 
@@ -59,10 +108,13 @@ foreach ($imibareList as $record) {
     $grandTotal += $record['total'];
     
     // Extract numeric values from formatted strings
+    $categoryTotals['ibindi'] += extractSum($record['ibindi']);
     $categoryTotals['icyacumi'] += extractSum($record['icyacumi']);
     $categoryTotals['icyacumi_cya_cms'] += extractSum($record['icyacumi_cya_cms']);
+    $categoryTotals['total_icyacumi_pair'] += extractSum($record['icyacumi']) + extractSum($record['icyacumi_cya_cms']);
     $categoryTotals['amaturo'] += extractSum($record['amaturo']);
     $categoryTotals['amaturo_bya_cms'] += extractSum($record['amaturo_bya_cms']);
+    $categoryTotals['total_amaturo_pair'] += extractSum($record['amaturo']) + extractSum($record['amaturo_bya_cms']);
     $categoryTotals['umusaruro'] += extractSum($record['umusaruro']);
     $categoryTotals['ituro'] += extractSum($record['ituro']);
     $categoryTotals['filide'] += extractSum($record['filide']);
@@ -71,6 +123,16 @@ foreach ($imibareList as $record) {
     $categoryTotals['mifem'] += extractSum($record['mifem']);
     $categoryTotals['ja'] += extractSum($record['ja']);
 }
+
+$totalRecords = count($imibareList);
+$perPage = (int) REPORTS_PER_PAGE;
+$totalPages = max(1, (int) ceil($totalRecords / $perPage));
+$currentPage = max(1, (int) ($_GET['page'] ?? 1));
+if ($currentPage > $totalPages) {
+    $currentPage = $totalPages;
+}
+$offset = ($currentPage - 1) * $perPage;
+$pagedImibareList = array_slice($imibareList, $offset, $perPage);
 
 function extractSum($formatted) {
     if (empty($formatted)) return 0;
@@ -84,57 +146,63 @@ function extractSum($formatted) {
 // Get totals by intara for summary
 $totalsByIntara = getTotalsByIntara($pdo);
 $totalsByItorero = getTotalsByItorero($pdo);
+if ($isGuest && $guestIntaraId !== null) {
+    $totalsByIntara = array_values(array_filter($totalsByIntara, fn($r) => (int) $r['id'] === $guestIntaraId));
+    $guestIntaraName = $intaraList[0]['name'] ?? null;
+    if ($guestIntaraName !== null) {
+        $totalsByItorero = array_values(array_filter($totalsByItorero, fn($r) => ($r['intara_name'] ?? '') === $guestIntaraName));
+    }
+}
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Raporo - Church Ledger</title>
-    <link rel="icon" type="image/png" href="sda.png">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <?php require __DIR__ . '/includes/material-icons-head.php'; ?>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
 <div class="container">
     <div class="brand-header">
-        <img class="brand-logo" src="sda.png" alt="Adventist logo">
+        <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
         <div class="brand-text">
             <h2>Seventh Day Adventist Church</h2>
             <small>Stewardship and offerings management</small>
         </div>
     </div>
-    <div class="nav">
-        <a href="index.php">📝 INSERT DATA</a>
-        <a href="admin.php">⚙️ ADMIN PORTAL</a>
-        <a href="reports.php">📊 REPORT</a>
-        <a href="create-intara.php" style="color: #28a745;">➕ ADD Intara</a>
-        <a href="logout.php" style="color: #dc3545;">🚪 LOG OUT</a>
-    </div>
+    <?php require __DIR__ . '/includes/nav.php'; ?>
     
     <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
-    <h1>📊 Raporo ya mapato A na Mapato B</h1>
+    <h1><?= mi('assessment', 28) ?> Raporo ya mapato A na Mapato B</h1>
 
     <!-- Filters -->
     <div class="filters">
         <form method="GET">
             <div>
-                <label>Filter by Intara:</label>
-                <select name="intara_id" id="filter_intara" onchange="loadItoreroFilter()">
-                    <option value="">-- All Intara --</option>
+                <label>search: Intara:</label>
+                <select name="intara_id" id="filter_intara" onchange="loadItoreroFilter()" <?= $isGuest && $guestIntaraId ? 'disabled' : '' ?>>
+                    <?php if (!$isGuest): ?>
+                    <option value=""> Intara zose </option>
+                    <?php endif; ?>
                     <?php foreach ($intaraList as $intara): ?>
                         <option value="<?= $intara['id'] ?>" <?= $filter_intara == $intara['id'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($intara['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <?php if ($isGuest && $guestIntaraId): ?>
+                    <input type="hidden" name="intara_id" value="<?= (int) $guestIntaraId ?>">
+                <?php endif; ?>
             </div>
             <div>
-                <label>Filter by Itorero:</label>
+                <label>search: Itorero:</label>
                 <select name="itorero_id" id="filter_itorero">
-                    <option value="">-- All Itorero --</option>
+                    <option value="">Amatorero yose</option>
                     <?php foreach ($itoreroList as $itorero): ?>
                         <option value="<?= $itorero['id'] ?>" <?= $filter_itorero == $itorero['id'] ? 'selected' : '' ?> data-intara="<?= $itorero['intara_id'] ?>">
                             <?= htmlspecialchars($itorero['name']) ?>
@@ -145,7 +213,7 @@ $totalsByItorero = getTotalsByItorero($pdo);
             <div>
                 <label>Ukwezi:</label>
                 <select name="month" id="filter_month">
-                    <option value="">-- Byose / All months --</option>
+                    <option value="">Amezi yose / All months </option>
                     <?php foreach ($monthOptions as $m => $label): ?>
                         <option value="<?= (int) $m ?>" <?= (string)$filter_month === (string)$m ? 'selected' : '' ?>>
                             <?= htmlspecialchars($label) ?>
@@ -154,11 +222,11 @@ $totalsByItorero = getTotalsByItorero($pdo);
                 </select>
             </div>
             <div>
-                <button type="submit">🔍 Search</button>
-                <button type="button" class="clear" onclick="clearFilters()">🔄 Clear</button>
+                <button type="submit" class="btn-icon"><?= mi_btn('search', 'Search') ?></button>
+                <button type="button" class="clear btn-icon" onclick="clearFilters()"><?= mi_btn('refresh', 'Clear') ?></button>
                 <?php if (!$isGuest): ?>
-                    <button type="button" onclick="downloadExcel()">⬇️ Download mapato B</button>
-                    <button type="button" onclick="downloadMapatoA()">⬇️ Download mapato A</button>
+                    <button type="button" class="btn-icon" onclick="downloadExcel()"><?= mi_btn('download', 'Download mapato B') ?></button>
+                    <button type="button" class="btn-icon" onclick="downloadMapatoA()"><?= mi_btn('download', 'Download mapato A') ?></button>
                 <?php endif; ?>
             </div>
         </form>
@@ -188,59 +256,72 @@ $totalsByItorero = getTotalsByItorero($pdo);
     <h3>Category Totals</h3>
     <div class="category-summary">
         <div class="cat-item">
+            <div class="label">Ibindi</div>
+            <div class="value"><?= number_format($categoryTotals['ibindi'], 0) ?></div>
+        </div>
+        <div class="cat-item">
             <div class="label">Icyacumi</div>
             <div class="value"><?= number_format($categoryTotals['icyacumi'], 0) ?></div>
         </div>
         <div class="cat-item">
-            <div class="label">Icyacumi cya CMS</div>
+            <div class="label">Icyacumi cyanyuze muri CFMS</div>
             <div class="value"><?= number_format($categoryTotals['icyacumi_cya_cms'], 0) ?></div>
+        </div>
+        <div class="cat-item">
+            <div class="label">Total Icyacumi(RECU & CFMS)</div>
+            <div class="value"><?= number_format($categoryTotals['total_icyacumi_pair'], 0) ?></div>
         </div>
         <div class="cat-item">
             <div class="label">Amaturo</div>
             <div class="value"><?= number_format($categoryTotals['amaturo'], 0) ?></div>
         </div>
         <div class="cat-item">
-            <div class="label">Amaturo bya CMS</div>
+            <div class="label">Amaturo yanyuze muri CFMS</div>
             <div class="value"><?= number_format($categoryTotals['amaturo_bya_cms'], 0) ?></div>
+        </div>
+        <div class="cat-item">
+            <div class="label">total Y'amaturo(RECU & CFMS)</div>
+            <div class="value"><?= number_format($categoryTotals['total_amaturo_pair'], 0) ?></div>
         </div>
         <div class="cat-item">
             <div class="label">Umusaruro</div>
             <div class="value"><?= number_format($categoryTotals['umusaruro'], 0) ?></div>
         </div>
         <div class="cat-item">
-            <div class="label">Ituro</div>
+            <div class="label">Ituro ry'iteraniro rikuru</div>
             <div class="value"><?= number_format($categoryTotals['ituro'], 0) ?></div>
         </div>
         <div class="cat-item">
-            <div class="label">Filide</div>
+            <div class="label">Inyubako ya Filide</div>
             <div class="value"><?= number_format($categoryTotals['filide'], 0) ?></div>
         </div>
         <div class="cat-item">
-            <div class="label">SS</div>
+            <div class="label">SS Lesson</div>
             <div class="value"><?= number_format($categoryTotals['ss'], 0) ?></div>
         </div>
         <div class="cat-item">
-            <div class="label">Ubusonga</div>
+            <div class="label">Udutabo tw'Ubusonga</div>
             <div class="value"><?= number_format($categoryTotals['ubusonga'], 0) ?></div>
         </div>
         <div class="cat-item">
-            <div class="label">Mifem</div>
+            <div class="label">Udutabo twa Mifem</div>
             <div class="value"><?= number_format($categoryTotals['mifem'], 0) ?></div>
         </div>
         <div class="cat-item">
-            <div class="label">JA</div>
+            <div class="label">Udutabo twa JA</div>
             <div class="value"><?= number_format($categoryTotals['ja'], 0) ?></div>
         </div>
     </div>
 
     <!-- Data Table -->
-    <h3>inserted datae</h3>
+    <h3><?= mi('table_chart', 22) ?> Inserted data</h3>
     <?php if (empty($imibareList)): ?>
         <div class="no-data">
-            <p>📭 Nta data ihari</p>
-            <p>Shyiramo ibinyejana ukoresheje <a href="index.php">form y'injira</a></p>
+            <p><?= mi('inbox', 32) ?> Nta data ihari</p>
+            <p>insert the data in the form below <a href="index.php">form y'injira</a></p>
         </div>
     <?php else: ?>
+        <div class="table-wrap">
         <table>
             <thead>
                 <tr>
@@ -250,16 +331,18 @@ $totalsByItorero = getTotalsByItorero($pdo);
                     <th>Ukwezi</th>
                     <th>Ibindi</th>
                     <th>Icyacumi</th>
-                    <th>Icyacumi CMS</th>
+                    <th>Icyacumi CFMS</th>
+                    <th>Total Icyacumi(RECU AND CFMS)</th>
                     <th>Amaturo</th>
-                    <th>Amaturo CMS</th>
+                    <th>Amaturo CFMS</th>
+                    <th>total Y'amaturo(RECU AND CFMS)</th>
                     <th>Umusaruro</th>
-                    <th>Ituro</th>
-                    <th>Filide</th>
-                    <th>SS</th>
-                    <th>Ubusonga</th>
-                    <th>Mifem</th>
-                    <th>JA</th>
+                    <th>Ituro ry'iteraniro rikuru</th>
+                    <th>inyubako ya Filide</th>
+                    <th>SS Lesson</th>
+                    <th>Udutabo tw'Ubusonga</th>
+                    <th>Udutabo twa Mifem</th>
+                    <th>Udutabo twa JA</th>
                     <th>Total</th>
                     <th>Itariki</th>
                     <?php if (!$isGuest): ?>
@@ -268,7 +351,7 @@ $totalsByItorero = getTotalsByItorero($pdo);
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($imibareList as $record): ?>
+                <?php foreach ($pagedImibareList as $record): ?>
                 <tr>
                     <td><?= htmlspecialchars($record['lesi']) ?></td>
                     <td><?= htmlspecialchars($record['intara_name'] ?? '-') ?></td>
@@ -280,8 +363,10 @@ $totalsByItorero = getTotalsByItorero($pdo);
                     <td><?= htmlspecialchars($record['ibindi'] ?? '') ?></td>
                     <td><?= htmlspecialchars($record['icyacumi'] ?? '0') ?></td>
                     <td><?= htmlspecialchars($record['icyacumi_cya_cms'] ?? '0') ?></td>
+                    <td><?= number_format(extractSum($record['icyacumi'] ?? '') + extractSum($record['icyacumi_cya_cms'] ?? ''), 0) ?></td>
                     <td><?= htmlspecialchars($record['amaturo'] ?? '0') ?></td>
                     <td><?= htmlspecialchars($record['amaturo_bya_cms'] ?? '0') ?></td>
+                    <td><?= number_format(extractSum($record['amaturo'] ?? '') + extractSum($record['amaturo_bya_cms'] ?? ''), 0) ?></td>
                     <td><?= htmlspecialchars($record['umusaruro'] ?? '0') ?></td>
                     <td><?= htmlspecialchars($record['ituro'] ?? '0') ?></td>
                     <td><?= htmlspecialchars($record['filide'] ?? '0') ?></td>
@@ -293,10 +378,10 @@ $totalsByItorero = getTotalsByItorero($pdo);
                     <td class="date"><?= date('d/m/Y H:i', strtotime($record['created_at'])) ?></td>
                     <?php if (!$isGuest): ?>
                         <td>
-                            <a href="edit-imibare.php?id=<?= (int) $record['id'] ?>" style="margin-right:8px;">✏️ Update</a>
+                            <a href="edit-imibare.php?id=<?= (int) $record['id'] ?>" class="btn-icon" style="margin-right:8px;"><?= mi_btn('edit', 'Update', 16) ?></a>
                             <form method="POST" style="display:inline;" onsubmit="return confirm('Urashaka gusiba iyi record?')">
                                 <input type="hidden" name="record_id" value="<?= (int) $record['id'] ?>">
-                                <button type="submit" name="delete_record" class="delete">🗑️ Delete</button>
+                                <button type="submit" name="delete_record" class="delete btn-icon"><?= mi_btn('delete', 'Delete', 16) ?></button>
                             </form>
                         </td>
                     <?php endif; ?>
@@ -305,11 +390,14 @@ $totalsByItorero = getTotalsByItorero($pdo);
             </tbody>
             <tfoot>
                 <tr style="background: #e8f5e9; font-weight: bold;">
-                    <td colspan="5">TOTAL</td>
+                    <td colspan="4">TOTAL</td>
+                    <td><?= number_format($categoryTotals['ibindi'], 0) ?></td>
                     <td><?= number_format($categoryTotals['icyacumi'], 0) ?></td>
                     <td><?= number_format($categoryTotals['icyacumi_cya_cms'], 0) ?></td>
+                    <td><?= number_format($categoryTotals['total_icyacumi_pair'], 0) ?></td>
                     <td><?= number_format($categoryTotals['amaturo'], 0) ?></td>
                     <td><?= number_format($categoryTotals['amaturo_bya_cms'], 0) ?></td>
+                    <td><?= number_format($categoryTotals['total_amaturo_pair'], 0) ?></td>
                     <td><?= number_format($categoryTotals['umusaruro'], 0) ?></td>
                     <td><?= number_format($categoryTotals['ituro'], 0) ?></td>
                     <td><?= number_format($categoryTotals['filide'], 0) ?></td>
@@ -325,6 +413,9 @@ $totalsByItorero = getTotalsByItorero($pdo);
                 </tr>
             </tfoot>
         </table>
+        </div>
+
+        <?php require __DIR__ . '/includes/reports-pagination.php'; ?>
     <?php endif; ?>
 </div>
 
@@ -355,7 +446,7 @@ function loadItoreroFilter() {
 }
 
 function clearFilters() {
-    window.location.href = 'reports.php';
+    window.location.href = 'reports.php' + (<?= $isGuest && $guestIntaraId ? 'true' : 'false' ?> ? '?intara_id=<?= (int) ($guestIntaraId ?? 0) ?>' : '');
 }
 
 function getSelectedFilterNames() {

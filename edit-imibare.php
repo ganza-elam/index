@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'auth.php';
+require_once __DIR__ . '/includes/icons.php';
 
 // Only admin can edit records
 requireAdmin();
@@ -121,27 +122,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Hindura Imibare - Church Ledger</title>
-    <link rel="icon" type="image/png" href="sda.png">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php require __DIR__ . '/includes/material-icons-head.php'; ?>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="container">
     <div class="brand-header">
-        <img class="brand-logo" src="sda.png" alt="Adventist logo">
+        <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
         <div class="brand-text">
             <h2>Seventh Day Adventist church</h2>
             <small>Stewardship and offerings management</small>
         </div>
     </div>
-    <div class="nav">
-        <a href="index.php">📝 INSERT DATA</a>
-        <a href="reports.php">📊 REPORT</a>
-        <a href="logout.php" style="color: #dc3545;">🚪 LOG OUT</a>
-    </div>
+    <?php require __DIR__ . '/includes/nav.php'; ?>
 
-    <h2 class="page-title">UPDATE RECORD</h2>
+    <h2 class="page-title"><?= mi('edit', 24) ?> UPDATE RECORD</h2>
     <?= $message ?>
 
     <form method="POST" style="max-width: 1000px; margin-left: auto;">

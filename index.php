@@ -113,29 +113,23 @@ function format($input, $isAmaturo = false) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Imibare y'Ituro - Church Ledger</title>
-    <link rel="icon" type="image/png" href="sda.png">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <?php require __DIR__ . '/includes/material-icons-head.php'; ?>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
 <div class="container">
     <div class="brand-header">
-        <img class="brand-logo" src="sda.png" alt="Adventist logo">
+        <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
         <div class="brand-text">
             <h2>Seventh Day Adventist Church </h2>
             <small>Stewardship and offerings management</small>
         </div>
     </div>
-    <div class="nav">
-        <a href="index.php">📝 INSEERT DATA </a>
-        <a href="admin.php">⚙️ ADMIN PORTAL</a>
-        <a href="reports.php">📊 REPORT</a>
-        <a href="create-intara.php" style="color: #28a745;">➕ ADD Intara</a>
-        <a href="logout.php" style="color: #dc3545;">🚪 LOG OUT</a>
-    </div>
+    <?php require __DIR__ . '/includes/nav.php'; ?>
     
     <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
 
@@ -287,7 +281,7 @@ function format($input, $isAmaturo = false) {
         <div style="text-align: center; margin-top: 12px;">
             <button type="submit" name="save_record">💾 SAVE</button>
             <button type="button" onclick="downloadExcel()">⬇️ Download Excel</button>
-            <button type="reset" onclick="resetForm()">🔄 Tangura</button>
+            <button type="reset" onclick="resetForm()">🔄 Tangira</button>
         </div>
     </form>
 

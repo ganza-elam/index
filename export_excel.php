@@ -7,14 +7,18 @@
 require_once 'config.php';
 require_once 'auth.php';
 requireLogin();
-if (isGuestUser()) {
-    http_response_code(403);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([]);
-    exit;
-}
 
 $intara_id = $_GET['intara_id'] ?? null;
+if (isGuestUser()) {
+    $assigned = getGuestIntaraId();
+    if ($assigned === null) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([]);
+        exit;
+    }
+    $intara_id = (string) $assigned;
+}
 $itorero_id = $_GET['itorero_id'] ?? null;
 $month_filter = $_GET['month'] ?? null;
 
@@ -43,12 +47,12 @@ $excelData = [
     ['UKWEZI: ' . ($selectedMonthLabel ?? 'All months')],
     // ['Raporo - Generated: ' . date('d/m/Y H:i')],
     [],
-    ['Lesi', 'Intara', 'Itorero', 'Ukwezi', 'Ibindi', 'Icyacumi', 'Icyacumi cya CFMS', 'Amaturo', 'Amaturo ya CFMS', 'Umusaruro', 'Ituro', 'Filide', 'SS', 'Ubusonga', 'Mifem', 'JA', 'Total', 'Itariki']
+    ['Lesi', 'Intara', 'Itorero', 'Ukwezi', 'Ibindi', 'Icyacumi', 'Icyacumi cya CFMS', 'Total Icyacumi(icyacumi&Icyacumi CFMS)', 'Amaturo', 'Amaturo ya CFMS', 'total(RECU&CFMS)', 'Umusaruro', 'Ituro ryiteraniro rikuru', 'inyubako ya Filide', 'SS Lesson', 'Udutabo twUbusonga', 'Udutabo twa Mifem', 'Udutabo twa JA', 'Total', 'Itariki']
 ];
 
 $categoryTotals = [
-    'icyacumi' => 0, 'icyacumi_cya_cms' => 0, 'amaturo' => 0, 'amaturo_bya_cms' => 0, 'umusaruro' => 0, 'ituro' => 0,
-    'filide' => 0, 'ss' => 0, 'ubusonga' => 0, 'mifem' => 0, 'ja' => 0
+    'icyacumi' => 0, 'icyacumi_cya_cms' => 0, 'total_icyacumi_pair' => 0, 'amaturo' => 0, 'amaturo_bya_cms' => 0, 'total_amaturo_pair' => 0,
+    'umusaruro' => 0, 'ituro' => 0, 'filide' => 0, 'ss' => 0, 'ubusonga' => 0, 'mifem' => 0, 'ja' => 0
 ];
 
 $grandTotal = 0;
@@ -56,16 +60,22 @@ $grandTotal = 0;
 foreach ($imibareList as $record) {
     $mk = isset($record['month']) ? (int) $record['month'] : 0;
     $monthCell = ($mk >= 1 && $mk <= 12) ? $monthOptions[$mk] : '-';
+    $icyN = extractSum($record['icyacumi']);
+    $icyCmsN = extractSum($record['icyacumi_cya_cms']);
+    $amaN = extractSum($record['amaturo']);
+    $amaCmsN = extractSum($record['amaturo_bya_cms']);
     $excelData[] = [
         $record['lesi'],
         $record['intara_name'] ?? '-',
         $record['itorero_name'] ?? '-',
         $monthCell,
         $record['ibindi'] ?? '',
-        extractSum($record['icyacumi']),
-        extractSum($record['icyacumi_cya_cms']),
-        extractSum($record['amaturo']),
-        extractSum($record['amaturo_bya_cms']),
+        $icyN,
+        $icyCmsN,
+        $icyN + $icyCmsN,
+        $amaN,
+        $amaCmsN,
+        $amaN + $amaCmsN,
         extractSum($record['umusaruro']),
         extractSum($record['ituro']),
         extractSum($record['filide']),
@@ -78,10 +88,12 @@ foreach ($imibareList as $record) {
     ];
     
     $grandTotal += $record['total'];
-    $categoryTotals['icyacumi'] += extractSum($record['icyacumi']);
-    $categoryTotals['icyacumi_cya_cms'] += extractSum($record['icyacumi_cya_cms']);
-    $categoryTotals['amaturo'] += extractSum($record['amaturo']);
-    $categoryTotals['amaturo_bya_cms'] += extractSum($record['amaturo_bya_cms']);
+    $categoryTotals['icyacumi'] += $icyN;
+    $categoryTotals['icyacumi_cya_cms'] += $icyCmsN;
+    $categoryTotals['total_icyacumi_pair'] += $icyN + $icyCmsN;
+    $categoryTotals['amaturo'] += $amaN;
+    $categoryTotals['amaturo_bya_cms'] += $amaCmsN;
+    $categoryTotals['total_amaturo_pair'] += $amaN + $amaCmsN;
     $categoryTotals['umusaruro'] += extractSum($record['umusaruro']);
     $categoryTotals['ituro'] += extractSum($record['ituro']);
     $categoryTotals['filide'] += extractSum($record['filide']);
@@ -100,8 +112,10 @@ $excelData[] = [
     '',
     $categoryTotals['icyacumi'],
     $categoryTotals['icyacumi_cya_cms'],
+    $categoryTotals['total_icyacumi_pair'],
     $categoryTotals['amaturo'],
     $categoryTotals['amaturo_bya_cms'],
+    $categoryTotals['total_amaturo_pair'],
     $categoryTotals['umusaruro'],
     $categoryTotals['ituro'],
     $categoryTotals['filide'],

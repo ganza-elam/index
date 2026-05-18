@@ -308,3 +308,11 @@ function getTotalsByItorero($pdo) {
     ");
     return $stmt->fetchAll();
 }
+
+/**
+ * Update User
+ */
+function updateUser($pdo, $id, $username, $email, $role, $intaraId) {
+    $stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, role = ?, intara_id = ? WHERE id = ?");
+    return $stmt->execute([$username, $email, $role, $intaraId, $id]);
+}

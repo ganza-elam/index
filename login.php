@@ -7,7 +7,7 @@ $message = '';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    header('Location: index.php');
+    header('Location: ' . getPostLoginRedirectUrl());
     exit;
 }
 
@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     } else {
         $result = loginUser($pdo, $username, $password);
         if ($result['success']) {
-            header('Location: index.php');
+            header('Location: ' . getPostLoginRedirectUrl());
             exit;
         } else {
             $message = '<div class="alert error">' . htmlspecialchars($result['message']) . '</div>';
@@ -31,8 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ingiro - Church Ledger</title>
-    <link rel="icon" type="image/png" href="sda.png">
+    <title>Ingiro - elamSystem</title>
+    <link rel="icon" type="image/png" href="assets/sda.png">
     <link rel="stylesheet" href="styles.css">
     <style>
         body {
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
         </div>
         <div class="login-container">
             <div class="brand-header">
-                <img class="brand-logo" src="sda.png" alt="Adventist logo">
+                <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
                 <div class="brand-text">
                     <h2>Seventh Day Adventist Church</h2>
                     <small>Faithful stewardship reporting</small>

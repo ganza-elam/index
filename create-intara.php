@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'auth.php';
+require_once __DIR__ . '/includes/icons.php';
 
 // Require admin access for creation
 requireAdmin();
@@ -34,9 +35,9 @@ if (isset($_GET['created']) && isset($_GET['id'])) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Intara - Church Ledger</title>
-    <link rel="icon" type="image/png" href="sda.png">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php require __DIR__ . '/includes/material-icons-head.php'; ?>
     <link rel="stylesheet" href="styles.css">
     <style>
         .container { max-width: 600px; margin: 30px auto; }
@@ -70,25 +71,21 @@ if (isset($_GET['created']) && isset($_GET['id'])) {
 <body>
 <div class="container">
     <div class="brand-header">
-        <img class="brand-logo" src="sda.png" alt="Adventist logo">
+        <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
         <div class="brand-text">
             <h2>Seventh Day Adventist Church</h2>
             <small>Stewardship and offerings management</small>
         </div>
     </div>
-    <div class="nav">
-        <a href="index.php">📝 INSERT DATA</a>
-        <a href="admin.php">⚙️ ADMIN PORTAL</a>
-        <a href="reports.php">📊 REPORT</a>
-    </div>
+    <?php require __DIR__ . '/includes/nav.php'; ?>
 
     <?= $message ?>
-    <h1>📍 Create Intara</h1>
+    <h1><?= mi('add_location', 28) ?> Create Intara</h1>
 
     <?php if ($createdIntara): ?>
         <div class="success-box">
-            <h3>✅ Intara: <?= htmlspecialchars($createdIntara['name']) ?> yashyirwamo!</h3>
-            <p>Now create Itoreros under this Intara:</p>
+            <h3><?= mi('check_circle', 22) ?> Intara: <?= htmlspecialchars($createdIntara['name']) ?> yongewemo!</h3>
+            <p>shyiramo amatorero y'intara shya:</p>
             <a href="create-itorero.php?intara_id=<?= $createdIntara['id'] ?>">
                 🏛️ Create Itorero for <?= htmlspecialchars($createdIntara['name']) ?>
             </a>
@@ -99,7 +96,7 @@ if (isset($_GET['created']) && isset($_GET['id'])) {
     <?php else: ?>
         <form method="POST">
             <label>Izina ry'Intara:</label>
-            <input type="text" name="name" placeholder="Urugero: Intara y'Iburengerazuba" required>
+            <input type="text" name="name" placeholder="Urugero: Intara ya butarere" required>
             <button type="submit" name="create_intara">💾 Create Intara</button>
         </form>
         <div class="back-link">

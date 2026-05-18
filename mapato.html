@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Imibare y'Ituro</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <style>
+        body { font-family: Arial; text-align: center; margin-top: 30px; }
+
+        input {
+            width: 400px;
+            height: 50px;
+            font-size: 18px;
+            margin: 6px;
+            text-align: center;
+        }
+
+        .sum { color: green; font-size: 16px; }
+
+        button {
+            margin: 10px;
+            padding: 12px 20px;
+            font-size: 16px;
+            background: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 98%;
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+
+        th { background: #eee; }
+    </style>
+</head>
+<body>
+
+<h2>Injiza Ibyinjira</h2>
+<p>Urugero: 1000,2000,500</p>
+
+<input type="text" id="lesi" placeholder="Numero ya lesi"><br>
+
+<!-- Inputs -->
+<input type="text" id="icyacumi" placeholder="Icyacumi" oninput="calc()"><div class="sum">= <span id="s1">0</span></div>
+<input type="text" id="amaturo" placeholder="Amaturo" oninput="calc()"><div class="sum">= <span id="s2">0</span></div>
+<input type="text" id="umusaruro" placeholder="Umusaruro" oninput="calc()"><div class="sum">= <span id="s3">0</span></div>
+<input type="text" id="ituro" placeholder="Ituro Rikuru" oninput="calc()"><div class="sum">= <span id="s4">0</span></div>
+<input type="text" id="filide" placeholder="Inyubako ya Filide" oninput="calc()"><div class="sum">= <span id="s5">0</span></div>
+<input type="text" id="ss" placeholder="SS Lesson" oninput="calc()"><div class="sum">= <span id="s6">0</span></div>
+<input type="text" id="ubusonga" placeholder="Udutabo tw'Ubusonga" oninput="calc()"><div class="sum">= <span id="s7">0</span></div>
+<input type="text" id="mifem" placeholder="Udutabo twa Mifem" oninput="calc()"><div class="sum">= <span id="s8">0</span></div>
+<input type="text" id="ja" placeholder="Udutabo twa JA" oninput="calc()"><div class="sum">= <span id="s9">0</span></div>
+
+<button onclick="saveData()">💾 Bika</button>
+<button onclick="downloadExcel()">⬇️ Download Excel</button>
+
+<table id="table">
+<tr>
+<th>Lesi</th>
+<th>Icyacumi</th>
+<th>Amaturo</th>
+<th>Umusaruro</th>
+<th>Ituro</th>
+<th>Filide</th>
+<th>SS</th>
+<th>Ubusonga</th>
+<th>Mifem</th>
+<th>JA</th>
+<th>Total</th>
+</tr>
+</table>
+
+<h3>Final Totals</h3>
+<div id="totals"></div>
+<p><b>Grand Total: <span id="grand">0</span></b></p>
+
+<script>
+let data = [];
+
+let totals = {
+    icyacumi:0, amaturo:0, umusaruro:0, ituro:0,
+    filide:0, ss:0, ubusonga:0, mifem:0, ja:0
+};
+
+// sum normal
+function sumValues(val){
+    if(!val) return 0;
+    return val.split(",").map(x => parseFloat(x.trim())||0).reduce((a,b)=>a+b,0);
+}
+
+// sum amaturo (divide by 2)
+function sumAmaturo(val){
+    return sumValues(val) / 2;
+}
+
+// format display
+function format(input, isAmaturo=false){
+    let s = sumValues(input);
+
+    if(isAmaturo){
+        return input ? input + " = " + s + " ÷ 2 = " + (s/2) : "0";
+    }
+
+    return input ? input + " = " + s : "0";
+}
+
+// live calculation
+function calc(){
+    document.getElementById("s1").innerText = sumValues(icyacumi.value);
+    document.getElementById("s2").innerText = sumAmaturo(amaturo.value);
+    document.getElementById("s3").innerText = sumValues(umusaruro.value);
+    document.getElementById("s4").innerText = sumValues(ituro.value);
+    document.getElementById("s5").innerText = sumValues(filide.value);
+    document.getElementById("s6").innerText = sumValues(ss.value);
+    document.getElementById("s7").innerText = sumValues(ubusonga.value);
+    document.getElementById("s8").innerText = sumValues(mifem.value);
+    document.getElementById("s9").innerText = sumValues(ja.value);
+}
+
+// save
+function saveData(){
+    let lesi = document.getElementById("lesi").value;
+    if(!lesi){ alert("Shyiramo Numero ya lesi"); return;}
+
+    let ids = ["icyacumi","amaturo","umusaruro","ituro","filide","ss","ubusonga","mifem","ja"];
+    let row = {lesi};
+    let rowTotal = 0;
+
+    ids.forEach(id=>{
+        let input = document.getElementById(id).value;
+        let sum = (id === "amaturo") ? sumAmaturo(input) : sumValues(input);
+
+        if(id === "amaturo"){
+            row[id] = format(input, true);
+        } else {
+            row[id] = format(input);
+        }
+
+        totals[id] += sum;
+        rowTotal += sum;
+    });
+
+    row.total = rowTotal;
+    data.push(row);
+
+    updateTable(row);
+    updateTotals();
+
+    document.querySelectorAll("input").forEach(i=>i.value="");
+    calc();
+}
+
+// update table
+function updateTable(r){
+    let tr = table.insertRow();
+    Object.values(r).forEach(val=>{
+        let td = tr.insertCell();
+        td.innerText = val;
+    });
+}
+
+// totals display
+function updateTotals(){
+    let html="";
+    let grandTotal = 0;
+
+    for(let key in totals){
+        html += `<p>${key}: ${totals[key]}</p>`;
+        grandTotal += totals[key];
+    }
+
+    document.getElementById("totals").innerHTML = html;
+    document.getElementById("grand").innerText = grandTotal;
+}
+
+// excel download
+function downloadExcel(){
+    let grandTotal = Object.values(totals).reduce((a,b)=>a+b,0);
+
+    let excelData = [
+        ["INTARA"],
+        ["ITORERO"],
+        [],
+        ["Lesi","Icyacumi","Amaturo","Umusaruro","Ituro","Filide","SS","Ubusonga","Mifem","JA","Total"]
+    ];
+
+    data.forEach(r=>{
+        excelData.push(Object.values(r));
+    });
+
+    excelData.push([
+        "TOTAL",
+        totals.icyacumi,
+        totals.amaturo,
+        totals.umusaruro,
+        totals.ituro,
+        totals.filide,
+        totals.ss,
+        totals.ubusonga,
+        totals.mifem,
+        totals.ja,
+        grandTotal
+    ]);
+
+    let ws = XLSX.utils.aoa_to_sheet(excelData);
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+
+    XLSX.writeFile(wb, "imibare_full.xlsx");
+}
+</script>
+
+</body>
+</html>

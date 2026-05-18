@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'auth.php';
+require_once __DIR__ . '/includes/icons.php';
 
 // Require admin access for management
 requireAdmin();
@@ -16,8 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
     $newPassword = $_POST['new_password'] ?? '';
     $newRole = $_POST['new_role'] ?? 'guest';
     $newEmail = trim($_POST['new_email'] ?? '');
+    $newIntaraId = $_POST['new_intara_id'] ?? null;
 
-    $result = createUserByAdmin($pdo, $newUsername, $newPassword, $newRole, $newEmail);
+    $result = createUserByAdmin($pdo, $newUsername, $newPassword, $newRole, $newEmail, $newIntaraId);
     if ($result['success']) {
         $message = '<div class="alert success">' . htmlspecialchars($result['message']) . '</div>';
     } else {
@@ -33,6 +35,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_intara'])) {
             $message = '<div class="alert success">Intara added successfully!</div>';
         } else {
             $message = '<div class="alert error">Failed to add Intara.</div>';
+        }
+    }
+}
+
+// Handle Update User
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
+    $id = $_POST['user_id'];
+    $username = trim($_POST['user_username']);
+    $email = trim($_POST['user_email']);
+    $role = $_POST['user_role'];
+    $intaraId = ($role === 'guest') ? ($_POST['user_intara_id'] ?: null) : null;
+
+    if ($id && $username && $email && $role) {
+        if (updateUser($pdo, $id, $username, $email, $role, $intaraId)) {
+            $message = '<div class="alert success">User updated successfully!</div>';
+        } else {
+            $message = '<div class="alert error">Failed to update User.</div>';
         }
     }
 }
@@ -115,9 +134,9 @@ $usersList = getAllUsers($pdo);
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Gererera Intara na Itorero - Church Ledger</title>
-    <link rel="icon" type="image/png" href="sda.png">
+    <title>Gererera Intara na Itorero - elamSystem</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php require __DIR__ . '/includes/material-icons-head.php'; ?>
     <link rel="stylesheet" href="styles.css">
     <style>
         .section { margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
@@ -154,30 +173,24 @@ $usersList = getAllUsers($pdo);
 
 <div class="container">
     <div class="brand-header">
-        <img class="brand-logo" src="sda.png" alt="Adventist logo">
+        <img class="brand-logo" src="assets/sda.png" alt="Adventist logo">
         <div class="brand-text">
             <h2>Seventh Day Adventist Church</h2>
             <small>Stewardship and offerings management</small>
         </div>
     </div>
-    <div class="nav">
-        <a href="index.php">📝 INSERT DATA</a>
-        <a href="admin.php">⚙️ ADMIN PORTAL</a>
-        <a href="reports.php">📊 REPORT</a>
-        <a href="create-intara.php" style="color: #28a745;">➕ ADD Intara</a>
-        <a href="logout.php" style="color: #dc3545;">🚪 LOG OUT</a>
-    </div>
+    <?php require __DIR__ . '/includes/nav.php'; ?>
     
     <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
 
     <?= $message ?>
 
-    <h1>⚙️ ONGERAMO Intara n'Itorero</h1>
+    <h1><?= mi('settings', 28) ?> ONGERAMO Intara n'Itorero</h1>
 
     <!-- User Management Section -->
     <div class="section">
-        <h2>👥 Add new User </h2>
-        <form method="POST" class="form-row">
+        <h2><?= mi('group_add', 22) ?> Add new User</h2>
+        <form method="POST" class="form-row" id="create-user-form">
             <input type="text" name="new_username" placeholder="Username" required>
             <div class="password-wrapper">
                 <input type="password" name="new_password" placeholder="Password (min 6)" required>
@@ -186,20 +199,27 @@ $usersList = getAllUsers($pdo);
                     <svg class="icon-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </button>
             </div>
-            <select name="new_role">
-                <option value="guest">Guest</option>
+            <select name="new_role" id="new_role" onchange="toggleGuestIntaraField()">
+                <option value="guest">Pastor</option>
                 <option value="admin">Admin</option>
+            </select>
+            <select name="new_intara_id" id="new_intara_id" required>
+                <option value="">Hitamo Intara (pastor) </option>
+                <?php foreach ($intaraList as $intara): ?>
+                    <option value="<?= (int) $intara['id'] ?>"><?= htmlspecialchars($intara['name']) ?></option>
+                <?php endforeach; ?>
             </select>
             <input type="email" name="new_email" placeholder="Email (optional)">
             <button type="submit" name="create_user">Create User</button>
         </form>
         <p style="margin-top: 10px; color: #666; font-size: 13px;">
+            Guest agomba guhabwa Intara imwe — azabona reports zayo gusa. Admin akajya kuri Admin Portal nyuma yo kwinjira.
             Niba email idatanzwe, system izakora email yo muri local ifite username.
         </p>
     </div>
 
     <div class="section">
-        <h2>📋 List y'Abakoresha</h2>
+        <h2><?= mi('list_alt', 22) ?> List y'Abakoresha</h2>
         <table>
             <thead>
                 <tr>
@@ -207,6 +227,8 @@ $usersList = getAllUsers($pdo);
                     <th>Username</th>
                     <th>Email</th>
                     <th>Role</th>
+                    <th>Intara (Guest)</th>
+                    <th>Ibikorwa</th>
                 </tr>
             </thead>
             <tbody>
@@ -216,10 +238,26 @@ $usersList = getAllUsers($pdo);
                     <td><?= htmlspecialchars($appUser['username']) ?></td>
                     <td><?= htmlspecialchars($appUser['email']) ?></td>
                     <td><?= htmlspecialchars(strtoupper($appUser['role'] ?? 'admin')) ?></td>
+                    <td><?= ($appUser['role'] ?? '') === 'guest' ? htmlspecialchars($appUser['intara_name'] ?? '—') : '—' ?></td>
+                    <td>
+                        <div class="actions">
+                        <button class="edit" onclick="updateUser(
+                            <?= $appUser['id'] ?>, 
+                            '<?= htmlspecialchars($appUser['username'], ENT_QUOTES) ?>', 
+                            '<?= htmlspecialchars($appUser['email'], ENT_QUOTES) ?>', 
+                            '<?= htmlspecialchars($appUser['role'], ENT_QUOTES) ?>', 
+                            '<?= (int)($appUser['intara_id'] ?? 0) ?>'
+                        )">Hindura</button>
+                            <form method="POST" onsubmit="return confirm('Urashaka gusiba iyi user?')">
+                                <input type="hidden" name="user_id" value="<?= $appUser['id'] ?>">
+                                <button type="submit" name="delete_user" class="delete">Siba</button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if (empty($usersList)): ?>
-                <tr><td colspan="4" style="text-align:center;">Nta user uhari</td></tr>
+                <tr><td colspan="5" style="text-align:center;">Nta user uhari</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -227,21 +265,21 @@ $usersList = getAllUsers($pdo);
 
     <!-- Add Intara Section -->
     <div class="section">
-        <h2>📍 Ongeramo Intara</h2>
+        <h2><?= mi('add_location', 22) ?> Ongeramo Intara</h2>
         <form method="POST" class="form-row">
             <input type="text" name="intara_name" placeholder="Izina ry'Intara" required>
             <button type="submit" name="add_intara">Ongeramo</button>
         </form>
         <p style="text-align: center; margin-top: 15px;">
             <a href="create-intara.php" style="color: #006400; text-decoration: none;">
-                ➕ <strong>Create New Intara</strong> (INTARA y'indi)
+                <?= mi('add', 18) ?> <strong>Create New Intara</strong> (INTARA y'indi)
             </a>
         </p>
     </div>
 
     <!-- Add Itorero Section -->
     <div class="section">
-        <h2>🏛️ Ongeramo Itorero</h2>
+        <h2><?= mi('church', 22) ?> Ongeramo Itorero</h2>
         <form method="POST" class="form-row">
             <select name="itorero_intara_id" required>
                 <option value="">-- Hitamo Intara --</option>
@@ -256,7 +294,7 @@ $usersList = getAllUsers($pdo);
 
     <!-- Intara List -->
     <div class="section">
-        <h2>📍 List y'Intara</h2>
+        <h2><?= mi('map', 22) ?> List y'Intara</h2>
         <table>
             <thead>
                 <tr>
@@ -293,7 +331,7 @@ $usersList = getAllUsers($pdo);
 
     <!-- Itorero List -->
     <div class="section">
-        <h2>🏛️ List y'Itorero</h2>
+        <h2><?= mi('church', 22) ?> List y'Itorero</h2>
         <table>
             <thead>
                 <tr>
@@ -371,7 +409,72 @@ $usersList = getAllUsers($pdo);
     </div>
 </div>
 
+<!-- Edit User Modal -->
+<div id="updateUserModal" class="modal">
+    <div class="modal-content">
+        <h3>Hindura User</h3>
+        <form method="POST">
+            <input type="hidden" name="user_id" id="edit_user_id">
+            <label>Username:</label>
+            <input type="text" name="user_username" id="edit_user_username" required style="width:100%;margin-bottom:15px;">
+            <label>Email:</label>
+            <input type="email" name="user_email" id="edit_user_email" required style="width:100%;margin-bottom:15px;">
+            <label>Role:</label>
+            <select name="user_role" id="edit_user_role" required style="width:100%;margin-bottom:15px;" onchange="toggleEditIntaraField()">
+                <option value="guest">Pastor</option>
+                <option value="admin">Admin</option>
+            </select>
+            <div id="edit_intara_label" style="margin-bottom:15px;">
+                <label>Intara:</label>
+                <select name="user_intara_id" id="edit_user_intara_id" style="width:100%;margin-bottom:15px;">
+                    <option value="">-- Hitamo Intara --</option>
+                    <?php foreach ($intaraList as $intara): ?>
+                        <option value="<?= $intara['id'] ?>"><?= htmlspecialchars($intara['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="cancel" onclick="closeModal('updateUserModal')">Funga</button>
+                <button type="submit" name="update_user">Bika</button>
+            </div>
+        </form>
+    </div>
+</div>
 <script>
+
+function toggleEditIntaraField() {
+    const role = document.getElementById('edit_user_role').value;
+    const intaraSelect = document.getElementById('edit_user_intara_id');
+    const intaraLabel = document.getElementById('edit_intara_label');
+    const isGuest = role === 'guest';
+    intaraSelect.style.display = isGuest ? '' : 'none';
+    intaraLabel.style.display = isGuest ? '' : 'none';
+    intaraSelect.required = isGuest;
+    if (!isGuest) intaraSelect.value = '';
+}
+
+function toggleGuestIntaraField() {
+    const role = document.getElementById('new_role').value;
+    const intaraSelect = document.getElementById('new_intara_id');
+    const isGuest = role === 'guest';
+    intaraSelect.style.display = isGuest ? '' : 'none';
+    intaraSelect.required = isGuest;
+    if (!isGuest) {
+        intaraSelect.value = '';
+    }
+}
+toggleGuestIntaraField();
+
+function updateUser(id, username, email, role, intaraId) {
+    document.getElementById('edit_user_id').value = id;
+    document.getElementById('edit_user_username').value = username;
+    document.getElementById('edit_user_email').value = email;
+    document.getElementById('edit_user_role').value = role;
+    document.getElementById('edit_user_intara_id').value = intaraId;
+    document.getElementById('updateUserModal').style.display = 'block';
+    toggleEditIntaraField();
+}
+
 function editIntara(id, name) {
     document.getElementById('edit_intara_id').value = id;
     document.getElementById('edit_intara_name').value = name;

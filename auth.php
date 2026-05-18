@@ -29,6 +29,28 @@ function ensureUsersRoleColumn($pdo) {
     }
 }
 
+function ensureUsersIntaraColumn($pdo) {
+    static $checked = false;
+    if ($checked) {
+        return;
+    }
+    $checked = true;
+
+    ensureUsersRoleColumn($pdo);
+
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM users LIKE 'intara_id'");
+        $hasIntara = (bool) $stmt->fetch();
+        if (!$hasIntara) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN intara_id INT(11) NULL DEFAULT NULL AFTER role");
+            $pdo->exec("ALTER TABLE users ADD KEY users_intara_id (intara_id)");
+            $pdo->exec("ALTER TABLE users ADD CONSTRAINT users_intara_fk FOREIGN KEY (intara_id) REFERENCES intara(id) ON DELETE SET NULL");
+        }
+    } catch (PDOException $e) {
+        // Keep auth working even if schema update fails.
+    }
+}
+
 // Check if user is logged in
 function isLoggedIn() {
     return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
@@ -50,8 +72,42 @@ function getCurrentUser() {
         'id' => $_SESSION['user_id'],
         'username' => $_SESSION['username'],
         'email' => $_SESSION['email'],
-        'role' => $_SESSION['role'] ?? 'admin'
+        'role' => $_SESSION['role'] ?? 'admin',
+        'intara_id' => $_SESSION['intara_id'] ?? null
     ];
+}
+
+function getGuestIntaraId() {
+    if (!isGuestUser()) {
+        return null;
+    }
+    $id = $_SESSION['intara_id'] ?? null;
+    return ($id !== null && $id !== '') ? (int) $id : null;
+}
+
+/** Page to open after login (admin portal vs guest reports). */
+function getPostLoginRedirectUrl() {
+    return isGuestUser() ? 'reports.php' : 'admin.php';
+}
+
+/** Enforce guest may only use their assigned intara; returns effective intara id. */
+function resolveGuestIntaraFilter($requestedIntaraId) {
+    $assigned = getGuestIntaraId();
+    if ($assigned === null) {
+        return $requestedIntaraId;
+    }
+    return (string) $assigned;
+}
+
+function guestCanAccessIntara($intaraId) {
+    if (!isGuestUser()) {
+        return true;
+    }
+    $assigned = getGuestIntaraId();
+    if ($assigned === null) {
+        return false;
+    }
+    return (int) $intaraId === $assigned;
 }
 
 // Require login - redirect to login page if not authenticated
@@ -77,7 +133,7 @@ function requireAdmin() {
 
 // Register new user
 function registerUser($pdo, $username, $email, $password) {
-    ensureUsersRoleColumn($pdo);
+    ensureUsersIntaraColumn($pdo);
 
     // Check if username or email already exists
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
@@ -102,7 +158,7 @@ function registerUser($pdo, $username, $email, $password) {
 
 // Login user
 function loginUser($pdo, $username, $password) {
-    ensureUsersRoleColumn($pdo);
+    ensureUsersIntaraColumn($pdo);
     ensureGuestAccount($pdo);
 
     $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ?");
@@ -125,12 +181,13 @@ function loginUser($pdo, $username, $password) {
     $_SESSION['username'] = $user['username'];
     $_SESSION['email'] = $user['email'];
     $_SESSION['role'] = $user['role'] ?? (($user['username'] === GUEST_USERNAME) ? 'guest' : 'admin');
+    $_SESSION['intara_id'] = isset($user['intara_id']) && $user['intara_id'] !== '' ? (int) $user['intara_id'] : null;
     
     return ['success' => true, 'message' => 'Login successful'];
 }
 
 function ensureGuestAccount($pdo) {
-    ensureUsersRoleColumn($pdo);
+    ensureUsersIntaraColumn($pdo);
 
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
     $stmt->execute([GUEST_USERNAME]);
@@ -146,12 +203,13 @@ function ensureGuestAccount($pdo) {
     $stmt->execute([GUEST_USERNAME, GUEST_EMAIL, $hashedPassword]);
 }
 
-function createUserByAdmin($pdo, $username, $password, $role = 'guest', $email = '') {
-    ensureUsersRoleColumn($pdo);
+function createUserByAdmin($pdo, $username, $password, $role = 'guest', $email = '', $intara_id = null) {
+    ensureUsersIntaraColumn($pdo);
 
     $username = trim($username);
     $email = trim($email);
     $role = ($role === 'admin') ? 'admin' : 'guest';
+    $intara_id = ($intara_id !== null && $intara_id !== '') ? (int) $intara_id : null;
 
     if ($username === '' || $password === '') {
         return ['success' => false, 'message' => 'Username na password birasabwa.'];
@@ -159,6 +217,19 @@ function createUserByAdmin($pdo, $username, $password, $role = 'guest', $email =
 
     if (strlen($password) < 6) {
         return ['success' => false, 'message' => 'Password igomba kugira nibura 6 characters.'];
+    }
+
+    if ($role === 'guest') {
+        if (!$intara_id) {
+            return ['success' => false, 'message' => 'Hitamo Intara ya guest akora reports.'];
+        }
+        $stmt = $pdo->prepare("SELECT id FROM intara WHERE id = ?");
+        $stmt->execute([$intara_id]);
+        if (!$stmt->fetch()) {
+            return ['success' => false, 'message' => 'Intara watanze ntabwo ibaho.'];
+        }
+    } else {
+        $intara_id = null;
     }
 
     if ($email === '') {
@@ -172,8 +243,8 @@ function createUserByAdmin($pdo, $username, $password, $role = 'guest', $email =
     }
 
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
-    if ($stmt->execute([$username, $email, $hashedPassword, $role])) {
+    $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role, intara_id) VALUES (?, ?, ?, ?, ?)");
+    if ($stmt->execute([$username, $email, $hashedPassword, $role, $intara_id])) {
         return ['success' => true, 'message' => 'User yashyizweho neza.'];
     }
 
@@ -181,8 +252,13 @@ function createUserByAdmin($pdo, $username, $password, $role = 'guest', $email =
 }
 
 function getAllUsers($pdo) {
-    ensureUsersRoleColumn($pdo);
-    $stmt = $pdo->query("SELECT id, username, email, role FROM users ORDER BY id DESC");
+    ensureUsersIntaraColumn($pdo);
+    $stmt = $pdo->query("
+        SELECT u.id, u.username, u.email, u.role, u.intara_id, i.name AS intara_name
+        FROM users u
+        LEFT JOIN intara i ON u.intara_id = i.id
+        ORDER BY u.id DESC
+    ");
     return $stmt->fetchAll();
 }
 

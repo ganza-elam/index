@@ -375,7 +375,16 @@ if ($isGuest && $guestIntaraId !== null) {
                     <td><?= htmlspecialchars($record['mifem'] ?? '0') ?></td>
                     <td><?= htmlspecialchars($record['ja'] ?? '0') ?></td>
                     <td><strong><?= number_format($record['total'], 0) ?></strong></td>
-                    <td class="date"><?= date('d/m/Y H:i', strtotime($record['created_at'])) ?></td>
+                   
+                    <td class="date">
+                        <?php
+                            // Print 'created_at' in Africa/Kigali/ GMT+2 timezone
+                            $tz = new DateTimeZone('Africa/Kigali');
+                            $dt = new DateTime($record['created_at']);
+                            $dt->setTimezone($tz);
+                            echo $dt->format('d/m/Y H:i');
+                        ?>
+                    </td>
                     <?php if (!$isGuest): ?>
                         <td>
                             <a href="edit-imibare.php?id=<?= (int) $record['id'] ?>" class="btn-icon" style="margin-right:8px;"><?= mi_btn('edit', 'Update', 16) ?></a>

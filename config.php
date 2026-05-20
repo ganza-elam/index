@@ -316,3 +316,11 @@ function updateUser($pdo, $id, $username, $email, $role, $intaraId) {
     $stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, role = ?, intara_id = ? WHERE id = ?");
     return $stmt->execute([$username, $email, $role, $intaraId, $id]);
 }
+
+/**
+ * Delete User
+ */
+function deleteUser($pdo, $id) {
+    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+    return $stmt->execute([$id]);
+}

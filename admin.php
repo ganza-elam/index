@@ -39,6 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_intara'])) {
     }
 }
 
+
+// Handle Add Itorero
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_itorero'])) {
+    $intara_id = $_POST['itorero_intara_id'] ?? '';
+    $name = trim($_POST['itorero_name'] ?? '');
+    if ($intara_id && $name) {
+        if (addItorero($pdo, $intara_id, $name)) {
+            $message = '<div class="alert success">Itorero added successfully!</div>';
+        } else {
+            $message = '<div class="alert error">Failed to add Itorero.</div>';
+        }
+    }
+}
+
 // Handle Update User
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     $id = $_POST['user_id'];
@@ -52,19 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             $message = '<div class="alert success">User updated successfully!</div>';
         } else {
             $message = '<div class="alert error">Failed to update User.</div>';
-        }
-    }
-}
-
-// Handle Add Itorero
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_itorero'])) {
-    $intara_id = $_POST['itorero_intara_id'] ?? '';
-    $name = trim($_POST['itorero_name'] ?? '');
-    if ($intara_id && $name) {
-        if (addItorero($pdo, $intara_id, $name)) {
-            $message = '<div class="alert success">Itorero added successfully!</div>';
-        } else {
-            $message = '<div class="alert error">Failed to add Itorero.</div>';
         }
     }
 }
@@ -122,6 +123,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_itorero'])) {
             $message = '<div class="alert success">Itorero deleted successfully!</div>';
         } else {
             $message = '<div class="alert error">Failed to delete Itorero.</div>';
+        }
+    }
+}
+
+// Handle Delete User
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
+    $id = $_POST['user_id'];
+    if ($id) {
+        if (deleteUser($pdo, $id)) {
+            $message = '<div class="alert success">User deleted successfully!</div>';
+        } else {
+            $message = '<div class="alert error">Failed to delete User.</div>';
         }
     }
 }
@@ -248,10 +261,7 @@ $usersList = getAllUsers($pdo);
                             '<?= htmlspecialchars($appUser['role'], ENT_QUOTES) ?>', 
                             '<?= (int)($appUser['intara_id'] ?? 0) ?>'
                         )">Hindura</button>
-                            <form method="POST" onsubmit="return confirm('Urashaka gusiba iyi user?')">
-                                <input type="hidden" name="user_id" value="<?= $appUser['id'] ?>">
-                                <button type="submit" name="delete_user" class="delete">Siba</button>
-                            </form>
+                            <button type="submit" name="delete_user" class="delete" onclick="confirmDeleteUser(<?= $appUser['id'] ?>, '<?= htmlspecialchars($appUser['username'], ENT_QUOTES) ?>')">Siba</button>
                         </div>
                     </td>
                 </tr>
@@ -440,6 +450,22 @@ $usersList = getAllUsers($pdo);
         </form>
     </div>
 </div>
+
+<!-- Delete User Modal -->
+<div id="deleteUserModal" class="modal">
+    <div class="modal-content">
+        <h3>Siba User</h3>
+        <p>Urashaka gusiba user <strong id="delete_user_name"></strong>?</p>
+        <form method="POST">
+            <input type="hidden" name="user_id" id="delete_user_id">
+            <div class="modal-buttons">
+                <button type="button" class="cancel" onclick="closeModal('deleteUserModal')">Funga</button>
+                <button type="submit" name="delete_user" class="delete">Siba</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 
 function toggleEditIntaraField() {
@@ -486,6 +512,12 @@ function editItorero(id, intaraId, name) {
     document.getElementById('edit_itorero_intara_id').value = intaraId;
     document.getElementById('edit_itorero_name').value = name;
     document.getElementById('editItoreroModal').style.display = 'block';
+}
+
+function confirmDeleteUser(id, username) {
+    document.getElementById('delete_user_id').value = id;
+    document.getElementById('delete_user_name').textContent = username;
+    document.getElementById('deleteUserModal').style.display = 'block';
 }
 
 function closeModal(modalId) {

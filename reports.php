@@ -175,7 +175,7 @@ if ($isGuest && $guestIntaraId !== null) {
     </div>
     <?php require __DIR__ . '/includes/nav.php'; ?>
     
-    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <h1><?= mi('assessment', 28) ?> Raporo ya mapato A na Mapato B</h1>
@@ -222,6 +222,16 @@ if ($isGuest && $guestIntaraId !== null) {
                 </select>
             </div>
             <div>
+                <label>Lesi:</label>
+                <input type="text" name="lesi" id="filter_lesi" placeholder="Lesi">
+                    <?php foreach ($lesiList as $lesi): ?>
+                        <option value="<?= $lesi['id'] ?>" <?= $filter_lesi == $lesi['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($lesi['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div>
                 <button type="submit" class="btn-icon"><?= mi_btn('search', 'Search') ?></button>
                 <button type="button" class="clear btn-icon" onclick="clearFilters()"><?= mi_btn('refresh', 'Clear') ?></button>
                 <?php if (!$isGuest): ?>
@@ -255,6 +265,10 @@ if ($isGuest && $guestIntaraId !== null) {
     <!-- Category Totals -->
     <h3>Category Totals</h3>
     <div class="category-summary">
+        <div class="cat-item">
+            <div class="label">Lesi</div>
+            <div class="value"><?= htmlspecialchars($filter_lesi) ?></div>
+        </div>
         <div class="cat-item">
             <div class="label">Ibindi</div>
             <div class="value"><?= number_format($categoryTotals['ibindi'], 0) ?></div>

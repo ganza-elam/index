@@ -131,7 +131,7 @@ function format($input, $isAmaturo = false) {
     </div>
     <?php require __DIR__ . '/includes/nav.php'; ?>
     
-    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
 
     <?= $message ?>
 

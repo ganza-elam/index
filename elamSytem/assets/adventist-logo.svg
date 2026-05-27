@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220" role="img" aria-label="Adventist inspired logo">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f6f8b"/>
+      <stop offset="100%" stop-color="#0c4a6e"/>
+    </linearGradient>
+  </defs>
+  <circle cx="110" cy="110" r="102" fill="url(#g1)"/>
+  <circle cx="110" cy="110" r="96" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+  <path d="M110 32 L124 82 L176 82 L134 114 L148 164 L110 132 L72 164 L86 114 L44 82 L96 82 Z" fill="#facc15" opacity="0.95"/>
+  <path d="M110 58 C125 90, 145 106, 146 132 C146 153, 130 168, 110 168 C90 168, 74 153, 74 132 C75 106, 95 90, 110 58 Z" fill="#ffffff" opacity="0.95"/>
+  <path d="M110 83 C118 101, 128 110, 128 126 C128 136, 120 144, 110 144 C100 144, 92 136, 92 126 C92 110, 102 101, 110 83 Z" fill="#1f6f8b"/>
+  <text x="110" y="195" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">ELAM</text>
+</svg>

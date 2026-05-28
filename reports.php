@@ -175,7 +175,7 @@ if ($isGuest && $guestIntaraId !== null) {
     </div>
     <?php require __DIR__ . '/includes/nav.php'; ?>
     
-    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <h1><?= mi('assessment', 28) ?> Raporo ya mapato A na Mapato B</h1>

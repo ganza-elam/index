@@ -4,7 +4,7 @@
  * Plain PHP MySQL Connection
  */
 
- function loadEnvFile($path) {
+function loadEnvFile($path) {
     if (!is_readable($path)) return;
     foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         $line = trim($line);

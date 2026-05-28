@@ -52,6 +52,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_itorero'])) {
     }
 }
 
+// Handle Update User
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
+    $id = $_POST['user_id'];
+    $username = trim($_POST['user_username']);
+    $email = trim($_POST['user_email']);
+    $role = $_POST['user_role'];
+    $intaraId = ($role === 'guest') ? ($_POST['user_intara_id'] ?: null) : null;
+
+    if ($id && $username && $email && $role) {
+        if (updateUser($pdo, $id, $username, $email, $role, $intaraId)) {
+            $message = '<div class="alert success">User updated successfully!</div>';
+        } else {
+            $message = '<div class="alert error">Failed to update User.</div>';
+        }
+    }
+}
+
 // Handle Update Intara
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_intara'])) {
     $id = $_POST['intara_id'];
@@ -105,6 +122,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_itorero'])) {
             $message = '<div class="alert success">Itorero deleted successfully!</div>';
         } else {
             $message = '<div class="alert error">Failed to delete Itorero.</div>';
+        }
+    }
+}
+
+// Handle Delete User
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
+    $id = $_POST['user_id'];
+    if ($id) {
+        if (deleteUser($pdo, $id)) {
+            $message = '<div class="alert success">User deleted successfully!</div>';
+        } else {
+            $message = '<div class="alert error">Failed to delete User.</div>';
         }
     }
 }
@@ -163,7 +192,7 @@ $usersList = getAllUsers($pdo);
         </div>
     </div>
     
-    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
 
     <?= $message ?>
 
@@ -174,7 +203,14 @@ $usersList = getAllUsers($pdo);
         <h2><?= mi('group_add', 22) ?> Add new User</h2>
         <form method="POST" class="form-row" id="create-user-form">
             <input type="text" name="new_username" placeholder="Username" required>
-            <input type="password" name="new_password" placeholder="Password (min 6)" required>
+            <!-- <input type="password" name="new_password" placeholder="Password (min 6)" required> -->
+            <div class="password-wrapper">
+                <input type="password" name="new_password" placeholder="Password (min 6)" required>
+                <button type="button" class="password-toggle" data-shown="false" aria-label="Show password" title="Show password">
+                    <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="icon-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
             <select name="new_role" id="new_role" onchange="toggleGuestIntaraField()">
                 <option value="guest">pastor</option>
                 <option value="admin">Admin</option>
@@ -214,6 +250,18 @@ $usersList = getAllUsers($pdo);
                     <td><?= htmlspecialchars($appUser['email']) ?></td>
                     <td><?= htmlspecialchars(strtoupper($appUser['role'] ?? 'admin')) ?></td>
                     <td><?= ($appUser['role'] ?? '') === 'guest' ? htmlspecialchars($appUser['intara_name'] ?? '—') : '—' ?></td>
+                    <td>
+                        <div class="actions">
+                        <button class="edit" onclick="updateUser(
+                            <?= $appUser['id'] ?>, 
+                            '<?= htmlspecialchars($appUser['username'], ENT_QUOTES) ?>', 
+                            '<?= htmlspecialchars($appUser['email'], ENT_QUOTES) ?>', 
+                            '<?= htmlspecialchars($appUser['role'], ENT_QUOTES) ?>', 
+                            '<?= (int)($appUser['intara_id'] ?? 0) ?>'
+                        )">Hindura</button>
+                            <button type="submit" name="delete_user" class="delete" onclick="confirmDeleteUser(<?= $appUser['id'] ?>, '<?= htmlspecialchars($appUser['username'], ENT_QUOTES) ?>')">Siba</button>
+                        </div>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if (empty($usersList)): ?>
@@ -369,7 +417,67 @@ $usersList = getAllUsers($pdo);
     </div>
 </div>
 
+<!-- Edit User Modal -->
+<div id="updateUserModal" class="modal">
+    <div class="modal-content">
+        <h3>Hindura User</h3>
+        <form method="POST">
+            <input type="hidden" name="user_id" id="edit_user_id">
+            <label>Username:</label>
+            <input type="text" name="user_username" id="edit_user_username" required style="width:100%;margin-bottom:15px;">
+            <label>Email:</label>
+            <input type="email" name="user_email" id="edit_user_email" required style="width:100%;margin-bottom:15px;">
+            <label>Role:</label>
+            <select name="user_role" id="edit_user_role" required style="width:100%;margin-bottom:15px;" onchange="toggleEditIntaraField()">
+                <option value="guest">Pastor</option>
+                <option value="admin">Admin</option>
+            </select>
+            <div id="edit_intara_label" style="margin-bottom:15px;">
+                <label>Intara:</label>
+                <select name="user_intara_id" id="edit_user_intara_id" style="width:100%;margin-bottom:15px;">
+                    <option value="">-- Hitamo Intara --</option>
+                    <?php foreach ($intaraList as $intara): ?>
+                        <option value="<?= $intara['id'] ?>"><?= htmlspecialchars($intara['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="cancel" onclick="closeModal('updateUserModal')">Funga</button>
+                <button type="submit" name="update_user">Bika</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete User Modal -->
+<div id="deleteUserModal" class="modal">
+    <div class="modal-content">
+        <h3>Siba User</h3>
+        <p>Urashaka gusiba user <strong id="delete_user_name"></strong>?</p>
+        <form method="POST">
+            <input type="hidden" name="user_id" id="delete_user_id">
+            <div class="modal-buttons">
+                <button type="button" class="cancel" onclick="closeModal('deleteUserModal')">Funga</button>
+                <button type="submit" name="delete_user" class="delete">Siba</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+
+function toggleEditIntaraField() {
+    const role = document.getElementById('edit_user_role').value;
+    const intaraSelect = document.getElementById('edit_user_intara_id');
+    const intaraLabel = document.getElementById('edit_intara_label');
+    const isGuest = role === 'guest';
+    intaraSelect.style.display = isGuest ? '' : 'none';
+    intaraLabel.style.display = isGuest ? '' : 'none';
+    intaraSelect.required = isGuest;
+    if (!isGuest) intaraSelect.value = '';
+}
+
+
 function toggleGuestIntaraField() {
     const role = document.getElementById('new_role').value;
     const intaraSelect = document.getElementById('new_intara_id');
@@ -381,6 +489,17 @@ function toggleGuestIntaraField() {
     }
 }
 toggleGuestIntaraField();
+
+function updateUser(id, username, email, role, intaraId) {
+    document.getElementById('edit_user_id').value = id;
+    document.getElementById('edit_user_username').value = username;
+    document.getElementById('edit_user_email').value = email;
+    document.getElementById('edit_user_role').value = role;
+    document.getElementById('edit_user_intara_id').value = intaraId;
+    document.getElementById('updateUserModal').style.display = 'block';
+    toggleEditIntaraField();
+}
+
 
 function editIntara(id, name) {
     document.getElementById('edit_intara_id').value = id;
@@ -395,6 +514,13 @@ function editItorero(id, intaraId, name) {
     document.getElementById('editItoreroModal').style.display = 'block';
 }
 
+function confirmDeleteUser(id, username) {
+    document.getElementById('delete_user_id').value = id;
+    document.getElementById('delete_user_name').textContent = username;
+    document.getElementById('deleteUserModal').style.display = 'block';
+}
+
+
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
@@ -405,6 +531,19 @@ window.onclick = function(event) {
         event.target.style.display = 'none';
     }
 }
+
+document.querySelectorAll('.password-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        const input = btn.closest('.password-wrapper').querySelector('input');
+        const shown = input.type === 'text';
+        input.type = shown ? 'password' : 'text';
+        btn.setAttribute('data-shown', shown ? 'false' : 'true');
+        const label = shown ? 'Show password' : 'Hide password';
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    });
+});
+
 </script>
 
 <?php require __DIR__ . '/includes/layout-end.php'; ?>

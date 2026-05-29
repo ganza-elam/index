@@ -163,7 +163,7 @@ $usersList = getAllUsers($pdo);
         </div>
     </div>
     
-    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
 
     <?= $message ?>
 

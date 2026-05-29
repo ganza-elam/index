@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/icons.php';
 
 define('REPORTS_PER_PAGE', 15);
 
-function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_month, $report_type = 'insert_data', $filter_search = '') {
+function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_month, $report_type = 'insert_data', $filter_search = '', $hash = '') {
     $params = [];
     if ($report_type !== '' && $report_type !== 'insert_data') {
         $params['report_type'] = $report_type;
@@ -26,7 +26,14 @@ function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_mon
         $params['page'] = $page;
     }
     $query = http_build_query($params);
-    return 'reports.php' . ($query !== '' ? '?' . $query : '');
+    $url = 'reports.php' . ($query !== '' ? '?' . $query : '');
+    if ($hash === '' && $report_type === 'insert_data' && $page > 1) {
+        $hash = 'inserted-data-table';
+    }
+    if ($hash !== '') {
+        $url .= '#' . ltrim($hash, '#');
+    }
+    return $url;
 }
 
 // Require login before accessing this page
@@ -126,8 +133,8 @@ if ($isGuest && $guestIntaraId === null) {
     $grandTotalsRows = [];
 } elseif ($reportType === 'comparison_summary') {
     if ($filter_month !== '' && $filter_intara !== '') {
-        $imibareList = getImibare($pdo, $filter_intara, null, (int) $filter_month);
-        $mapatoPastorList = getMapatoPastor($pdo, $filter_intara, (int) $filter_month);
+        $imibareList = getImibare($pdo, $filter_intara, $filter_itorero ?: null, (int) $filter_month);
+        $mapatoPastorList = getMapatoPastor($pdo, $filter_intara, (int) $filter_month, $filter_itorero ?: null);
         $bankSlipsList = getBankSlips($pdo, $filter_intara, (int) $filter_month);
     } else {
         $imibareList = [];
@@ -145,7 +152,7 @@ if ($isGuest && $guestIntaraId === null) {
         : [];
 } elseif ($reportType === 'correct_report') {
     $imibareList = [];
-    $mapatoPastorList = getMapatoPastor($pdo, $filter_intara ?: null, $filter_month !== '' ? $filter_month : null);
+    $mapatoPastorList = getMapatoPastor($pdo, $filter_intara ?: null, $filter_month !== '' ? $filter_month : null, $filter_itorero ?: null);
     $bankSlipsList = getBankSlips($pdo, $filter_intara ?: null, $filter_month !== '' ? $filter_month : null);
     $comparisonRows = $filter_month !== ''
         ? getCorrectReportComparison($pdo, $filter_month, $filter_intara ?: null)
@@ -193,6 +200,15 @@ if ($reportType === 'insert_data' && !$isGuest) {
         $filter_month !== '' ? $filter_month : null
     );
 }
+$itoreroComparisonRows = [];
+if ($reportType === 'correct_report' && $filter_month !== '') {
+    $itoreroComparisonRows = getItoreroOfferingsComparison(
+        $pdo,
+        $filter_month,
+        $filter_intara ?: null,
+        $filter_itorero ?: null
+    );
+}
 $intaraList = getAllIntara($pdo);
 $itoreroList = getAllItorero($pdo);
 
@@ -222,12 +238,16 @@ $categoryTotals = [
 
 if ($reportType === 'correct_report') {
     $categoryTotals['meeting'] = 0;
+    $categoryTotals['icyacumi_cya_cms'] = 0;
+    $categoryTotals['amaturo_bya_cms'] = 0;
     foreach ($mapatoPastorList as $record) {
         $grandTotal += (float) $record['total'];
         $categoryTotals['icyacumi'] += extractSum($record['icyacumi']);
+        $categoryTotals['icyacumi_cya_cms'] += extractSum($record['icyacumi_cya_cms'] ?? '');
         $meetingVal = mapatoPastorMeeting($record);
         $categoryTotals['meeting'] += extractSum($meetingVal);
         $categoryTotals['amaturo'] += extractSum($record['amaturo']);
+        $categoryTotals['amaturo_bya_cms'] += extractSum($record['amaturo_bya_cms'] ?? '');
         $categoryTotals['revival'] += extractSum($record['revival']);
         $categoryTotals['ss'] += extractSum($record['ss']);
         $categoryTotals['filide'] += extractSum($record['filide']);
@@ -307,7 +327,7 @@ if ($isGuest && $guestIntaraId !== null) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <?php endif; ?>
 </head>
-<body class="app-body" data-default-nav-section="<?= $reportType === 'correct_report' ? 'comparison-pastor-bank' : ($reportType === 'insert_data' ? 'report-summary' : 'comparison-summary') ?>">
+<body class="app-body" data-default-nav-section="<?= $reportType === 'correct_report' ? 'comparison-pastor-bank' : ($reportType === 'insert_data' ? (($currentPage > 1 || $filter_search !== '') ? 'inserted-data-table' : 'report-summary') : 'comparison-summary') ?>">
 <?php require __DIR__ . '/includes/nav.php'; ?>
 <div class="container">
     <div class="brand-header">
@@ -318,7 +338,7 @@ if ($isGuest && $guestIntaraId !== null) {
         </div>
     </div>
     
-    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <?php if ($reportType === 'insert_data'): ?>
@@ -327,7 +347,18 @@ if ($isGuest && $guestIntaraId !== null) {
 
     <!-- Filters -->
     <div class="filters nav-page-section nav-page-section--always" id="report-filters" data-nav-section="report-filters">
-        <form method="GET">
+        <?php
+        $reportsFormHash = '';
+        if ($reportType === 'insert_data') {
+            $reportsFormHash = 'inserted-data-table';
+        } elseif ($reportType === 'comparison_summary') {
+            $reportsFormHash = 'comparison-summary';
+        } elseif ($reportType === 'correct_report') {
+            $reportsFormHash = 'comparison-pastor-bank';
+        }
+        ?>
+        <form method="GET" id="reports-filter-form" action="reports.php<?= $reportsFormHash !== '' ? '#' . $reportsFormHash : '' ?>">
+            <?php if ($reportType !== 'insert_data'): ?>
             <div>
                 <label>Ubwoko bwa raporo:</label>
                 <select name="report_type" id="report_type" onchange="toggleReportFilters()">
@@ -336,6 +367,9 @@ if ($isGuest && $guestIntaraId !== null) {
                     <option value="comparison_summary" <?= $reportType === 'comparison_summary' ? 'selected' : '' ?>>Comparison Summary &amp; PDF</option>
                 </select>
             </div>
+            <?php else: ?>
+            <input type="hidden" name="report_type" value="insert_data">
+            <?php endif; ?>
             <div>
                 <label>search: Intara:</label>
                 <select name="intara_id" id="filter_intara" onchange="loadItoreroFilter()" <?= $isGuest && $guestIntaraId ? 'disabled' : '' ?>>
@@ -352,7 +386,7 @@ if ($isGuest && $guestIntaraId !== null) {
                     <input type="hidden" name="intara_id" value="<?= (int) $guestIntaraId ?>">
                 <?php endif; ?>
             </div>
-            <div id="itorero_filter_wrap" style="<?= in_array($reportType, ['correct_report', 'comparison_summary'], true) ? 'display:none;' : '' ?>">
+            <div id="itorero_filter_wrap">
                 <label>search: Itorero:</label>
                 <select name="itorero_id" id="filter_itorero">
                     <option value="">Amatorero yose</option>
@@ -720,6 +754,22 @@ function sanitizeFilePart(value) {
         .replace(/^_+|_+$/g, '');
 }
 
+function downloadTableToExcel(tableId, baseName) {
+    const table = document.getElementById(tableId);
+    if (!table) {
+        alert('Table ntabashije kuboneka.');
+        return;
+    }
+    const wb = XLSX.utils.table_to_book(table, { sheet: 'Igereranya' });
+    const { intaraName, itoreroName, monthName } = getSelectedFilterNames();
+    const filename = sanitizeFilePart(baseName || 'report')
+        + '_' + sanitizeFilePart(intaraName)
+        + '_' + sanitizeFilePart(itoreroName)
+        + '_' + sanitizeFilePart(monthName)
+        + '.xlsx';
+    XLSX.writeFile(wb, filename);
+}
+
 function downloadExcel() {
     const intaraId = document.getElementById('filter_intara').value;
     const itoreroId = document.getElementById('filter_itorero').value;
@@ -796,6 +846,26 @@ function downloadMapatoA() {
             alert('Habaye ikibazo mu gukora Mapato A!');
         });
 }
+
+// Keep the active comparison section visible after Search (page-sections.js uses the hash).
+(function () {
+    var form = document.getElementById('reports-filter-form');
+    if (!form) {
+        return;
+    }
+    form.addEventListener('submit', function () {
+        var rtEl = document.getElementById('report_type');
+        var rt = rtEl ? rtEl.value : 'insert_data';
+        if (rt !== 'correct_report' && rt !== 'comparison_summary') {
+            return;
+        }
+        var hash = window.location.hash.replace(/^#/, '');
+        if (!hash) {
+            hash = rt === 'comparison_summary' ? 'comparison-summary' : 'comparison-pastor-bank';
+        }
+        form.action = 'reports.php#' + hash;
+    });
+})();
 
 // Initialize filter on page load
 document.addEventListener('DOMContentLoaded', function() {

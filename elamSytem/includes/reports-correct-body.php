@@ -248,13 +248,115 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
 
 <div class="nav-page-section" data-nav-section="comparison-bank-insert" id="comparison-bank-insert">
 <h3><?= mi('compare_arrows', 22) ?> Comparison: Bank Slip vs IBYANYUZE MUMA SUCHE</h3>
-<p style="color:#666;margin-bottom:12px;">Gereranya grand total ya bank slip n'IBYANYUZE MUMA SUCHE (Mapato B) ku bwanjye bwa Intara.</p>
+<p style="color:#666;margin-bottom:12px;">Gereranya grand total z'Intara: <strong>Bank Slip</strong> na <strong>IBYANYUZE MUMA SUCHE</strong> (imibare). Profit/Loss/Equal = Bank − INSERT.</p>
+
 <?php if ($filter_month === ''): ?>
-    <div class="no-data"><p>Hitamo <strong>Ukwezi</strong>.</p></div>
-<?php elseif (empty($comparisonInsertRows)): ?>
-    <div class="no-data"><p>Nta data.</p></div>
+    <div class="no-data"><p>Hitamo <strong>Ukwezi</strong> kugira ngo urebe iyi comparison.</p></div>
+<?php elseif ($filter_intara === ''): ?>
+    <div class="alert" style="background:#fff3cd;padding:12px;border-radius:8px;margin-bottom:16px;color:#856404;">
+        Hitamo <strong>Intara</strong> kugira ngo urebe comparison y'iyo Intara, cyangwa ureke ubusa urebe Intara zose zifite data.
+    </div>
+<?php endif; ?>
+
+<?php if ($filter_month !== '' && empty($comparisonInsertRows)): ?>
+    <div class="no-data"><p>Nta data y'iyi Intara/Ukwezi — ongeraho IBYANYUZE MUMA SUCHE cyangwa bank slip.</p></div>
+<?php elseif ($filter_month !== '' && !empty($comparisonInsertRows)): ?>
+    <div class="table-wrap">
+    <?php require __DIR__ . '/comparison-table-bank-insert.php'; ?>
+    </div>
+<?php endif; ?>
+</div>
+
+<div class="nav-page-section" data-nav-section="comparison-itorero-offerings" id="comparison-itorero-offerings">
+<h3><?= mi('compare_arrows', 22) ?> Igereranya ku Itorero: IBYAKIRIWE KURI RAPORT vs IBYANYUZE MUMA SUCHE</h3>
+<p style="color:#666;margin-bottom:12px;">
+    Iyi table igaragaza ku rwego rw'Itorero: Icyacumi (RECU + CFMS) na Amaturo (RECU + CFMS)
+    hagati ya <strong>IBYAKIRIWE KURI RAPORT</strong> na <strong>IBYANYUZE MUMA SUCHE</strong>.
+    Difference = (IBYANYUZE MUMA SUCHE − IBYAKIRIWE KURI RAPORT).
+</p>
+<?php if ($filter_month === ''): ?>
+    <div class="no-data"><p>Hitamo <strong>Ukwezi</strong> kugira ngo ubone igereranya ku Itorero.</p></div>
+<?php elseif (empty($itoreroComparisonRows)): ?>
+    <div class="no-data"><p>Nta data ihari kuri ayo mafilter.</p></div>
 <?php else: ?>
-    <?php include __DIR__ . '/comparison-table-bank-insert.php'; ?>
+    <div style="margin-bottom:10px;">
+        <button type="button" class="btn-icon" onclick="downloadTableToExcel('itorero-offerings-comparison-table', 'igereranya_itorero_ibyakiriwe_n_ibyanyuze')">
+            <?= mi_btn('download', 'Download Igereranya ku Itorero') ?>
+        </button>
+    </div>
+    <div class="table-wrap">
+    <table id="itorero-offerings-comparison-table">
+        <thead>
+            <tr>
+                <th rowspan="2">Intara</th>
+                <th rowspan="2">Itorero</th>
+                <th colspan="3">IBYAKIRIWE KURI RAPORT — Icyacumi</th>
+                <th colspan="3">IBYAKIRIWE KURI RAPORT — Amaturo</th>
+                <th colspan="3">IBYANYUZE MUMA SUCHE — Icyacumi</th>
+                <th colspan="3">IBYANYUZE MUMA SUCHE — Amaturo</th>
+                <th colspan="2">Icyacumi Diff</th>
+                <th colspan="2">Amaturo Diff</th>
+            </tr>
+            <tr>
+                <th>RECU</th><th>CFMS</th><th>Total</th>
+                <th>RECU</th><th>CFMS</th><th>Total</th>
+                <th>RECU</th><th>CFMS</th><th>Total</th>
+                <th>RECU</th><th>CFMS</th><th>Total</th>
+                <th>Difference</th><th>Status</th>
+                <th>Difference</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $tot = [
+                'p_ir' => 0, 'p_ic' => 0, 'p_it' => 0, 'p_ar' => 0, 'p_ac' => 0, 'p_at' => 0,
+                'm_ir' => 0, 'm_ic' => 0, 'm_it' => 0, 'm_ar' => 0, 'm_ac' => 0, 'm_at' => 0,
+                'd_i' => 0, 'd_a' => 0,
+            ];
+            foreach ($itoreroComparisonRows as $row):
+                $tot['p_ir'] += $row['pastor_icyacumi_recu']; $tot['p_ic'] += $row['pastor_icyacumi_cfms']; $tot['p_it'] += $row['pastor_icyacumi_total'];
+                $tot['p_ar'] += $row['pastor_amaturo_recu']; $tot['p_ac'] += $row['pastor_amaturo_cfms']; $tot['p_at'] += $row['pastor_amaturo_total'];
+                $tot['m_ir'] += $row['insert_icyacumi_recu']; $tot['m_ic'] += $row['insert_icyacumi_cfms']; $tot['m_it'] += $row['insert_icyacumi_total'];
+                $tot['m_ar'] += $row['insert_amaturo_recu']; $tot['m_ac'] += $row['insert_amaturo_cfms']; $tot['m_at'] += $row['insert_amaturo_total'];
+                $tot['d_i'] += $row['diff_icyacumi']; $tot['d_a'] += $row['diff_amaturo'];
+            ?>
+            <tr>
+                <td><?= htmlspecialchars($row['intara_name']) ?></td>
+                <td><?= htmlspecialchars($row['itorero_name']) ?></td>
+                <td><?= number_format($row['pastor_icyacumi_recu'], 0) ?></td>
+                <td><?= number_format($row['pastor_icyacumi_cfms'], 0) ?></td>
+                <td><strong><?= number_format($row['pastor_icyacumi_total'], 0) ?></strong></td>
+                <td><?= number_format($row['pastor_amaturo_recu'], 0) ?></td>
+                <td><?= number_format($row['pastor_amaturo_cfms'], 0) ?></td>
+                <td><strong><?= number_format($row['pastor_amaturo_total'], 0) ?></strong></td>
+                <td><?= number_format($row['insert_icyacumi_recu'], 0) ?></td>
+                <td><?= number_format($row['insert_icyacumi_cfms'], 0) ?></td>
+                <td><strong><?= number_format($row['insert_icyacumi_total'], 0) ?></strong></td>
+                <td><?= number_format($row['insert_amaturo_recu'], 0) ?></td>
+                <td><?= number_format($row['insert_amaturo_cfms'], 0) ?></td>
+                <td><strong><?= number_format($row['insert_amaturo_total'], 0) ?></strong></td>
+                <td><?= number_format($row['diff_icyacumi'], 0) ?></td>
+                <td><span class="cr-status cr-status-<?= $row['status_icyacumi'] ?>"><?= htmlspecialchars($row['status_icyacumi_label']) ?></span></td>
+                <td><?= number_format($row['diff_amaturo'], 0) ?></td>
+                <td><span class="cr-status cr-status-<?= $row['status_amaturo'] ?>"><?= htmlspecialchars($row['status_amaturo_label']) ?></span></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr style="background:#e8f5e9;font-weight:bold;">
+                <td colspan="2">TOTAL</td>
+                <td><?= number_format($tot['p_ir'], 0) ?></td><td><?= number_format($tot['p_ic'], 0) ?></td><td><?= number_format($tot['p_it'], 0) ?></td>
+                <td><?= number_format($tot['p_ar'], 0) ?></td><td><?= number_format($tot['p_ac'], 0) ?></td><td><?= number_format($tot['p_at'], 0) ?></td>
+                <td><?= number_format($tot['m_ir'], 0) ?></td><td><?= number_format($tot['m_ic'], 0) ?></td><td><?= number_format($tot['m_it'], 0) ?></td>
+                <td><?= number_format($tot['m_ar'], 0) ?></td><td><?= number_format($tot['m_ac'], 0) ?></td><td><?= number_format($tot['m_at'], 0) ?></td>
+                <td><?= number_format($tot['d_i'], 0) ?></td>
+                <td><?php [$sI,$lI] = correctReportStatusFromDiff($tot['d_i']); ?><span class="cr-status cr-status-<?= $sI ?>"><?= $lI ?></span></td>
+                <td><?= number_format($tot['d_a'], 0) ?></td>
+                <td><?php [$sA,$lA] = correctReportStatusFromDiff($tot['d_a']); ?><span class="cr-status cr-status-<?= $sA ?>"><?= $lA ?></span></td>
+            </tr>
+        </tfoot>
+    </table>
+    </div>
 <?php endif; ?>
 </div>
 
@@ -271,10 +373,13 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
         <thead>
             <tr>
                 <th>Intara</th>
+                <th>Itorero</th>
                 <th>Ukwezi</th>
                 <th>Icyacumi</th>
+                <th>Icyacumi CFMS</th>
                 <th>CM (Meeting)</th>
                 <th>Amaturo</th>
+                <th>Amaturo CFMS</th>
                 <th>Revival</th>
                 <th>SS Lesson</th>
                 <th>Inyubako</th>
@@ -291,13 +396,16 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
             ?>
             <tr>
                 <td><?= htmlspecialchars($record['intara_name'] ?? '-') ?></td>
+                <td><?= htmlspecialchars($record['itorero_name'] ?? '-') ?></td>
                 <td><?php
                     $mk = (int) ($record['month'] ?? 0);
                     echo $mk >= 1 && $mk <= 12 ? htmlspecialchars($monthOptions[$mk]) : '-';
                 ?></td>
                 <td><?= htmlspecialchars($record['icyacumi'] ?? '0') ?></td>
+                <td><?= htmlspecialchars($record['icyacumi_cya_cms'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($meetingDisplay ?: '0') ?></td>
                 <td><?= htmlspecialchars($record['amaturo'] ?? '0') ?></td>
+                <td><?= htmlspecialchars($record['amaturo_bya_cms'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['revival'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['ss'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['filide'] ?? '0') ?></td>
@@ -324,10 +432,12 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
         </tbody>
         <tfoot>
             <tr style="background: #e8f5e9; font-weight: bold;">
-                <td colspan="2">TOTAL</td>
+                <td colspan="3">TOTAL</td>
                 <td><?= number_format($categoryTotals['icyacumi'], 0) ?></td>
+                <td><?= number_format($categoryTotals['icyacumi_cya_cms'] ?? 0, 0) ?></td>
                 <td><?= number_format($crMeetingTotal, 0) ?></td>
                 <td><?= number_format($categoryTotals['amaturo'], 0) ?></td>
+                <td><?= number_format($categoryTotals['amaturo_bya_cms'] ?? 0, 0) ?></td>
                 <td><?= number_format($categoryTotals['revival'], 0) ?></td>
                 <td><?= number_format($categoryTotals['ss'], 0) ?></td>
                 <td><?= number_format($categoryTotals['filide'], 0) ?></td>

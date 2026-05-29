@@ -9,6 +9,7 @@ ensureCorrectReportTables($pdo);
 
 $currentUser = getCurrentUser();
 $intaraList = getAllIntara($pdo);
+$itoreroList = getAllItorero($pdo);
 $monthOptions = imibareMonthOptions();
 $message = '';
 $activeSection = $_GET['section'] ?? 'pastor';
@@ -18,23 +19,29 @@ if (!in_array($activeSection, ['pastor', 'bank'], true)) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_pastor_mapato'])) {
     $intara_id = $_POST['intara_id'] ?? '';
+    $itorero_id = $_POST['itorero_id'] ?? '';
     $month_val = isset($_POST['month']) ? (int) $_POST['month'] : 0;
 
     $icyacumi = $_POST['icyacumi'] ?? '';
+    $icyacumi_cya_cms = $_POST['icyacumi_cya_cms'] ?? '';
     $meeting = $_POST['meeting'] ?? '';
     $amaturo = $_POST['amaturo'] ?? '';
+    $amaturo_bya_cms = $_POST['amaturo_bya_cms'] ?? '';
     $revival = $_POST['revival'] ?? '';
     $ss = $_POST['ss'] ?? '';
     $filide = $_POST['filide'] ?? '';
     $umusaruro = $_POST['umusaruro'] ?? '';
     $ituro = $_POST['ituro'] ?? '';
 
-    $total = sumValues($icyacumi) + sumValues($meeting) + sumValues($amaturo)
+    $total = sumValues($icyacumi) + sumValues($icyacumi_cya_cms) + sumValues($meeting) + sumValues($amaturo) + sumValues($amaturo_bya_cms)
         + sumValues($revival) + sumValues($ss) + sumValues($filide)
         + sumValues($umusaruro) + sumValues($ituro);
 
     if (empty($intara_id)) {
         $message = '<div class="alert error">Hitamo Intara</div>';
+        $activeSection = 'pastor';
+    } elseif ($itorero_id === '') {
+        $message = '<div class="alert error">Hitamo Itorero</div>';
         $activeSection = 'pastor';
     } elseif ($month_val < 1 || $month_val > 12) {
         $message = '<div class="alert error">Hitamo ukwezi</div>';
@@ -42,10 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_pastor_mapato'])
     } else {
         $data = [
             'intara_id' => $intara_id,
+            'itorero_id' => $itorero_id,
             'month' => $month_val,
             'icyacumi' => formatStoredValue($icyacumi),
+            'icyacumi_cya_cms' => formatStoredValue($icyacumi_cya_cms),
             'meeting' => formatStoredValue($meeting),
             'amaturo' => formatStoredValue($amaturo, false),
+            'amaturo_bya_cms' => formatStoredValue($amaturo_bya_cms, false),
             'revival' => formatStoredValue($revival),
             'ss' => formatStoredValue($ss),
             'filide' => formatStoredValue($filide),
@@ -137,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_bank_slip'])) {
         </div>
     </div>
 
-    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <h2 class="page-title">IBYAKIRIWE KURI RAPORT</h2>
@@ -154,10 +164,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_bank_slip'])) {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px 24px;">
                 <div class="form-group">
                     <label>Intara:</label>
-                    <select name="intara_id" required>
+                    <select name="intara_id" id="cr_intara_id" required>
                         <option value="">-- Hitamo Intara --</option>
                         <?php foreach ($intaraList as $intara): ?>
                             <option value="<?= $intara['id'] ?>"><?= htmlspecialchars($intara['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Itorero:</label>
+                    <select name="itorero_id" id="cr_itorero_id" required>
+                        <option value="">-- Hitamo Itorero --</option>
+                        <?php foreach ($itoreroList as $itorero): ?>
+                            <option value="<?= $itorero['id'] ?>" data-intara="<?= $itorero['intara_id'] ?>"><?= htmlspecialchars($itorero['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -179,6 +198,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_bank_slip'])) {
                     </div>
                 </div>
                 <div class="form-group">
+                    <label>Icyacumi cya CFMS:</label>
+                    <div class="input-row">
+                        <input type="text" id="icyacumi_cya_cms" name="icyacumi_cya_cms" placeholder="Urugero: 1000+2000" oninput="calcPastor()">
+                        <span class="sum">= <span id="p_s1_cfms">0</span></span>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>CM (Meeting):</label>
                     <div class="input-row">
                         <input type="text" id="meeting" name="meeting" placeholder="Urugero: 1000+2000" oninput="calcPastor()">
@@ -190,6 +216,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_bank_slip'])) {
                     <div class="input-row">
                         <input type="text" id="amaturo" name="amaturo" placeholder="Urugero: 1000+2000" oninput="calcPastor()">
                         <span class="sum">= <span id="p_s2">0</span></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Amaturo ya CFMS:</label>
+                    <div class="input-row">
+                        <input type="text" id="amaturo_bya_cms" name="amaturo_bya_cms" placeholder="Urugero: 1000+2000" oninput="calcPastor()">
+                        <span class="sum">= <span id="p_s2_cfms">0</span></span>
                     </div>
                 </div>
                 <div class="form-group">
@@ -283,8 +316,10 @@ function sumValues(val) {
 
 function calcPastor() {
     const icy = sumValues(document.getElementById('icyacumi').value);
+    const icyCfms = sumValues(document.getElementById('icyacumi_cya_cms').value);
     const meeting = sumValues(document.getElementById('meeting').value);
     const ama = sumValues(document.getElementById('amaturo').value);
+    const amaCfms = sumValues(document.getElementById('amaturo_bya_cms').value);
     const rev = sumValues(document.getElementById('revival').value);
     const ss = sumValues(document.getElementById('ss').value);
     const fil = sumValues(document.getElementById('filide').value);
@@ -292,14 +327,33 @@ function calcPastor() {
     const itu = sumValues(document.getElementById('ituro').value);
 
     document.getElementById('p_s1').innerText = icy;
+    document.getElementById('p_s1_cfms').innerText = icyCfms;
     document.getElementById('p_s_meeting').innerText = meeting;
     document.getElementById('p_s2').innerText = ama;
+    document.getElementById('p_s2_cfms').innerText = amaCfms;
     document.getElementById('p_s_rev').innerText = rev;
     document.getElementById('p_s6').innerText = ss;
     document.getElementById('p_s5').innerText = fil;
     document.getElementById('p_s3').innerText = umu;
     document.getElementById('p_s4').innerText = itu;
-    document.getElementById('p_grand').innerText = icy + meeting + ama + rev + ss + fil + umu + itu;
+    document.getElementById('p_grand').innerText = icy + icyCfms + meeting + ama + amaCfms + rev + ss + fil + umu + itu;
+}
+
+const crIntaraSelect = document.getElementById('cr_intara_id');
+const crItoreroSelect = document.getElementById('cr_itorero_id');
+if (crIntaraSelect && crItoreroSelect) {
+    function filterCorrectReportItorero() {
+        const intaraId = crIntaraSelect.value;
+        crItoreroSelect.querySelectorAll('option').forEach(function (opt) {
+            if (!opt.value) return;
+            opt.hidden = intaraId !== '' && opt.dataset.intara !== intaraId;
+        });
+        if (crItoreroSelect.selectedOptions[0] && crItoreroSelect.selectedOptions[0].hidden) {
+            crItoreroSelect.value = '';
+        }
+    }
+    crIntaraSelect.addEventListener('change', filterCorrectReportItorero);
+    filterCorrectReportItorero();
 }
 </script>
 <?php require __DIR__ . '/includes/layout-end.php'; ?>

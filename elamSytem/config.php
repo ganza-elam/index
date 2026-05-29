@@ -4,33 +4,14 @@
  * Plain PHP MySQL Connection
  */
 
- function loadEnvFile($path) {
-    if (!is_readable($path)) return;
-    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        $parts = explode('=', $line, 2);
-        if (count($parts) !== 2) continue;
-        $k = trim($parts[0]);
-        $v = trim(trim($parts[1]), "\"'");
-        if ($k !== '' && getenv($k) === false) { putenv("$k=$v"); $_ENV[$k] = $v; }
-    }
-}
-function envValue($key, $default = null) {
-    $v = getenv($key);
-    return ($v === false || $v === '') ? $default : $v;
-}
-loadEnvFile(__DIR__ . '/.env');
-
-$db_host = envValue('DB_HOST', envValue('MYSQLHOST', '127.0.0.1'));
-$db_port = envValue('DB_PORT', envValue('MYSQLPORT', '3306'));
-$db_name = envValue('DB_NAME', envValue('MYSQLDATABASE', 'elam_system'));
-$db_user = envValue('DB_USER', envValue('MYSQLUSER', 'root'));
-$db_pass = envValue('DB_PASS', envValue('MYSQLPASSWORD', ''));
+$db_host = 'localhost';
+$db_name = 'elam_system';
+$db_user = 'root';
+$db_pass = '';
 
 try {
     $pdo = new PDO(
-        "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4",
+        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
         $db_user,
         $db_pass,
         [
@@ -373,6 +354,7 @@ function ensureCorrectReportTables($pdo) {
     $pdo->exec("CREATE TABLE IF NOT EXISTS mapato_pastor (
         id int(11) NOT NULL AUTO_INCREMENT,
         intara_id int(11) NOT NULL,
+        itorero_id int(11) DEFAULT NULL,
         month tinyint unsigned NOT NULL,
         icyacumi varchar(500) DEFAULT NULL,
         icyacumi_cya_cms varchar(500) DEFAULT NULL,
@@ -387,6 +369,7 @@ function ensureCorrectReportTables($pdo) {
         created_at datetime DEFAULT current_timestamp(),
         PRIMARY KEY (id),
         KEY idx_mapato_pastor_intara (intara_id),
+        KEY idx_mapato_pastor_itorero (itorero_id),
         KEY idx_mapato_pastor_month (month)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
@@ -418,6 +401,10 @@ function migrateCorrectReportColumns($pdo) {
         return;
     }
     $cols = $pdo->query("SHOW COLUMNS FROM mapato_pastor")->fetchAll(PDO::FETCH_COLUMN);
+    if ($cols && !in_array('itorero_id', $cols, true)) {
+        $pdo->exec("ALTER TABLE mapato_pastor ADD COLUMN itorero_id int(11) DEFAULT NULL AFTER intara_id");
+        $pdo->exec("ALTER TABLE mapato_pastor ADD KEY idx_mapato_pastor_itorero (itorero_id)");
+    }
     if ($cols && !in_array('meeting', $cols, true)) {
         $pdo->exec("ALTER TABLE mapato_pastor ADD COLUMN meeting varchar(500) DEFAULT NULL AFTER icyacumi");
         if (in_array('icyacumi_cya_cms', $cols, true)) {
@@ -442,15 +429,18 @@ function mapatoPastorMeeting($record) {
 function saveMapatoPastor($pdo, $data) {
     ensureCorrectReportTables($pdo);
     $stmt = $pdo->prepare("INSERT INTO mapato_pastor (
-        intara_id, month, icyacumi, meeting, amaturo,
+        intara_id, itorero_id, month, icyacumi, icyacumi_cya_cms, meeting, amaturo, amaturo_bya_cms,
         revival, ss, filide, umusaruro, ituro, total
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     return $stmt->execute([
         $data['intara_id'],
+        $data['itorero_id'] ?? null,
         $data['month'],
         $data['icyacumi'],
+        $data['icyacumi_cya_cms'] ?? null,
         $data['meeting'],
         $data['amaturo'],
+        $data['amaturo_bya_cms'] ?? null,
         $data['revival'],
         $data['ss'],
         $data['filide'],
@@ -463,15 +453,18 @@ function saveMapatoPastor($pdo, $data) {
 function updateMapatoPastor($pdo, $id, $data) {
     ensureCorrectReportTables($pdo);
     $stmt = $pdo->prepare("UPDATE mapato_pastor SET
-        intara_id = ?, month = ?, icyacumi = ?, meeting = ?, amaturo = ?,
+        intara_id = ?, itorero_id = ?, month = ?, icyacumi = ?, icyacumi_cya_cms = ?, meeting = ?, amaturo = ?, amaturo_bya_cms = ?,
         revival = ?, ss = ?, filide = ?, umusaruro = ?, ituro = ?, total = ?
         WHERE id = ?");
     return $stmt->execute([
         $data['intara_id'],
+        $data['itorero_id'] ?? null,
         $data['month'],
         $data['icyacumi'],
+        $data['icyacumi_cya_cms'] ?? null,
         $data['meeting'],
         $data['amaturo'],
+        $data['amaturo_bya_cms'] ?? null,
         $data['revival'],
         $data['ss'],
         $data['filide'],
@@ -484,19 +477,21 @@ function updateMapatoPastor($pdo, $id, $data) {
 
 function getMapatoPastorById($pdo, $id) {
     ensureCorrectReportTables($pdo);
-    $stmt = $pdo->prepare("SELECT mp.*, intara.name AS intara_name
+    $stmt = $pdo->prepare("SELECT mp.*, intara.name AS intara_name, it.name AS itorero_name
         FROM mapato_pastor mp
         LEFT JOIN intara ON mp.intara_id = intara.id
+        LEFT JOIN itorero it ON mp.itorero_id = it.id
         WHERE mp.id = ? LIMIT 1");
     $stmt->execute([$id]);
     return $stmt->fetch();
 }
 
-function getMapatoPastor($pdo, $intara_id = null, $month = null) {
+function getMapatoPastor($pdo, $intara_id = null, $month = null, $itorero_id = null) {
     ensureCorrectReportTables($pdo);
-    $sql = "SELECT mp.*, intara.name AS intara_name
+    $sql = "SELECT mp.*, intara.name AS intara_name, it.name AS itorero_name
             FROM mapato_pastor mp
             LEFT JOIN intara ON mp.intara_id = intara.id
+            LEFT JOIN itorero it ON mp.itorero_id = it.id
             WHERE 1=1";
     $params = [];
     if ($intara_id) {
@@ -509,6 +504,10 @@ function getMapatoPastor($pdo, $intara_id = null, $month = null) {
             $sql .= " AND mp.month = ?";
             $params[] = $monthInt;
         }
+    }
+    if ($itorero_id) {
+        $sql .= " AND mp.itorero_id = ?";
+        $params[] = (int) $itorero_id;
     }
     $sql .= " ORDER BY mp.created_at DESC";
     $stmt = $pdo->prepare($sql);
@@ -1024,5 +1023,113 @@ function getBankVsInsertDataComparison($pdo, $month, $intara_id = null) {
             'status_label' => $statusLabel,
         ];
     }
+    return $rows;
+}
+
+/**
+ * Per-Itorero comparison of RECU/CFMS for Icyacumi and Amaturo
+ * between IBYAKIRIWE KURI RAPORT (mapato_pastor) and IBYANYUZE MUMA SUCHE (imibare).
+ */
+function getItoreroOfferingsComparison($pdo, $month, $intara_id = null, $itorero_id = null) {
+    ensureCorrectReportTables($pdo);
+    $monthInt = (int) $month;
+    if ($monthInt < 1 || $monthInt > 12) {
+        return [];
+    }
+    require_once __DIR__ . '/includes/imibare-math.php';
+    $mapatoPastorList = getMapatoPastor($pdo, $intara_id ?: null, $monthInt, $itorero_id ?: null);
+    $insertDataList = getImibare($pdo, $intara_id ?: null, $itorero_id ?: null, $monthInt);
+
+    $rowsByItorero = [];
+    foreach ($mapatoPastorList as $row) {
+        $id = (int) ($row['itorero_id'] ?? 0);
+        if ($id < 1) {
+            continue;
+        }
+        if (!isset($rowsByItorero[$id])) {
+            $rowsByItorero[$id] = [
+                'itorero_id' => $id,
+                'itorero_name' => $row['itorero_name'] ?? '—',
+                'intara_name' => $row['intara_name'] ?? '—',
+                'pastor_icyacumi_recu' => 0.0,
+                'pastor_icyacumi_cfms' => 0.0,
+                'pastor_amaturo_recu' => 0.0,
+                'pastor_amaturo_cfms' => 0.0,
+                'insert_icyacumi_recu' => 0.0,
+                'insert_icyacumi_cfms' => 0.0,
+                'insert_amaturo_recu' => 0.0,
+                'insert_amaturo_cfms' => 0.0,
+            ];
+        }
+        $rowsByItorero[$id]['pastor_icyacumi_recu'] += extractSumFromStored($row['icyacumi'] ?? '');
+        $rowsByItorero[$id]['pastor_icyacumi_cfms'] += extractSumFromStored($row['icyacumi_cya_cms'] ?? '');
+        $rowsByItorero[$id]['pastor_amaturo_recu'] += extractSumFromStored($row['amaturo'] ?? '');
+        $rowsByItorero[$id]['pastor_amaturo_cfms'] += extractSumFromStored($row['amaturo_bya_cms'] ?? '');
+    }
+    foreach ($insertDataList as $row) {
+        $id = (int) ($row['itorero_id'] ?? 0);
+        if ($id < 1) {
+            continue;
+        }
+        if (!isset($rowsByItorero[$id])) {
+            $rowsByItorero[$id] = [
+                'itorero_id' => $id,
+                'itorero_name' => $row['itorero_name'] ?? '—',
+                'intara_name' => $row['intara_name'] ?? '—',
+                'pastor_icyacumi_recu' => 0.0,
+                'pastor_icyacumi_cfms' => 0.0,
+                'pastor_amaturo_recu' => 0.0,
+                'pastor_amaturo_cfms' => 0.0,
+                'insert_icyacumi_recu' => 0.0,
+                'insert_icyacumi_cfms' => 0.0,
+                'insert_amaturo_recu' => 0.0,
+                'insert_amaturo_cfms' => 0.0,
+            ];
+        }
+        $rowsByItorero[$id]['insert_icyacumi_recu'] += extractSumFromStored($row['icyacumi'] ?? '');
+        $rowsByItorero[$id]['insert_icyacumi_cfms'] += extractSumFromStored($row['icyacumi_cya_cms'] ?? '');
+        $rowsByItorero[$id]['insert_amaturo_recu'] += extractSumFromStored($row['amaturo'] ?? '');
+        $rowsByItorero[$id]['insert_amaturo_cfms'] += extractSumFromStored($row['amaturo_bya_cms'] ?? '');
+    }
+
+    $rows = [];
+    foreach ($rowsByItorero as $row) {
+        $pastorIcyTotal = (float) $row['pastor_icyacumi_recu'] + (float) $row['pastor_icyacumi_cfms'];
+        $insertIcyTotal = (float) $row['insert_icyacumi_recu'] + (float) $row['insert_icyacumi_cfms'];
+        $pastorAmaTotal = (float) $row['pastor_amaturo_recu'] + (float) $row['pastor_amaturo_cfms'];
+        $insertAmaTotal = (float) $row['insert_amaturo_recu'] + (float) $row['insert_amaturo_cfms'];
+        $diffIcy = $insertIcyTotal - $pastorIcyTotal;
+        $diffAma = $insertAmaTotal - $pastorAmaTotal;
+        [$icyStatus, $icyLabel] = correctReportStatusFromDiff($diffIcy);
+        [$amaStatus, $amaLabel] = correctReportStatusFromDiff($diffAma);
+
+        $rows[] = [
+            'itorero_id' => (int) $row['itorero_id'],
+            'itorero_name' => $row['itorero_name'],
+            'intara_name' => $row['intara_name'],
+            'pastor_icyacumi_recu' => (float) $row['pastor_icyacumi_recu'],
+            'pastor_icyacumi_cfms' => (float) $row['pastor_icyacumi_cfms'],
+            'pastor_icyacumi_total' => $pastorIcyTotal,
+            'pastor_amaturo_recu' => (float) $row['pastor_amaturo_recu'],
+            'pastor_amaturo_cfms' => (float) $row['pastor_amaturo_cfms'],
+            'pastor_amaturo_total' => $pastorAmaTotal,
+            'insert_icyacumi_recu' => (float) $row['insert_icyacumi_recu'],
+            'insert_icyacumi_cfms' => (float) $row['insert_icyacumi_cfms'],
+            'insert_icyacumi_total' => $insertIcyTotal,
+            'insert_amaturo_recu' => (float) $row['insert_amaturo_recu'],
+            'insert_amaturo_cfms' => (float) $row['insert_amaturo_cfms'],
+            'insert_amaturo_total' => $insertAmaTotal,
+            'diff_icyacumi' => $diffIcy,
+            'diff_amaturo' => $diffAma,
+            'status_icyacumi' => $icyStatus,
+            'status_icyacumi_label' => $icyLabel,
+            'status_amaturo' => $amaStatus,
+            'status_amaturo_label' => $amaLabel,
+        ];
+    }
+    usort($rows, function ($a, $b) {
+        $intaraCmp = strcmp((string) $a['intara_name'], (string) $b['intara_name']);
+        return $intaraCmp !== 0 ? $intaraCmp : strcmp((string) $a['itorero_name'], (string) $b['itorero_name']);
+    });
     return $rows;
 }

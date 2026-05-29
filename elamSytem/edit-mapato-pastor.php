@@ -20,6 +20,7 @@ if (!$record) {
 }
 
 $intaraList = getAllIntara($pdo);
+$itoreroList = getAllItorero($pdo);
 $monthOptions = imibareMonthOptions();
 $message = '';
 
@@ -33,31 +34,39 @@ function parseStoredInput($value) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
     $intara_id = $_POST['intara_id'] ?? '';
+    $itorero_id = $_POST['itorero_id'] ?? '';
     $month_val = isset($_POST['month']) ? (int) $_POST['month'] : 0;
     $icyacumi = trim($_POST['icyacumi'] ?? '');
+    $icyacumi_cya_cms = trim($_POST['icyacumi_cya_cms'] ?? '');
     $meeting = trim($_POST['meeting'] ?? '');
     $amaturo = trim($_POST['amaturo'] ?? '');
+    $amaturo_bya_cms = trim($_POST['amaturo_bya_cms'] ?? '');
     $revival = trim($_POST['revival'] ?? '');
     $ss = trim($_POST['ss'] ?? '');
     $filide = trim($_POST['filide'] ?? '');
     $umusaruro = trim($_POST['umusaruro'] ?? '');
     $ituro = trim($_POST['ituro'] ?? '');
 
-    $total = sumValues($icyacumi) + sumValues($meeting) + sumValues($amaturo)
+    $total = sumValues($icyacumi) + sumValues($icyacumi_cya_cms) + sumValues($meeting) + sumValues($amaturo) + sumValues($amaturo_bya_cms)
         + sumValues($revival) + sumValues($ss) + sumValues($filide)
         + sumValues($umusaruro) + sumValues($ituro);
 
     if ($intara_id === '') {
         $message = '<div class="alert error">Hitamo Intara</div>';
+    } elseif ($itorero_id === '') {
+        $message = '<div class="alert error">Hitamo Itorero</div>';
     } elseif ($month_val < 1 || $month_val > 12) {
         $message = '<div class="alert error">Hitamo ukwezi</div>';
     } else {
         $data = [
             'intara_id' => $intara_id,
+            'itorero_id' => $itorero_id,
             'month' => $month_val,
             'icyacumi' => formatStoredValue($icyacumi),
+            'icyacumi_cya_cms' => formatStoredValue($icyacumi_cya_cms),
             'meeting' => formatStoredValue($meeting),
             'amaturo' => formatStoredValue($amaturo, false),
+            'amaturo_bya_cms' => formatStoredValue($amaturo_bya_cms, false),
             'revival' => formatStoredValue($revival),
             'ss' => formatStoredValue($ss),
             'filide' => formatStoredValue($filide),
@@ -90,9 +99,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
             <div class="form-group">
                 <label>Intara:</label>
-                <select name="intara_id" required>
+                <select name="intara_id" id="edit_intara_id" required>
                     <?php foreach ($intaraList as $intara): ?>
                         <option value="<?= $intara['id'] ?>" <?= (int)$record['intara_id'] === (int)$intara['id'] ? 'selected' : '' ?>><?= htmlspecialchars($intara['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Itorero:</label>
+                <select name="itorero_id" id="edit_itorero_id" required>
+                    <option value="">-- Hitamo Itorero --</option>
+                    <?php foreach ($itoreroList as $itorero): ?>
+                        <option value="<?= $itorero['id'] ?>" data-intara="<?= $itorero['intara_id'] ?>" <?= (int)($record['itorero_id'] ?? 0) === (int)$itorero['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($itorero['name']) ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -107,8 +127,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
             <?php
             $fields = [
                 'icyacumi' => 'Icyacumi',
+                'icyacumi_cya_cms' => 'Icyacumi cya CFMS',
                 'meeting' => 'CM (Meeting)',
                 'amaturo' => 'Amaturo',
+                'amaturo_bya_cms' => 'Amaturo ya CFMS',
                 'revival' => 'Revival',
                 'ss' => 'SS Lesson',
                 'filide' => 'Inyubako',
@@ -135,10 +157,26 @@ function sumValues(val) {
     return val.replace(/\+/g, ',').split(',').map(x => parseFloat(x.trim()) || 0).reduce((a, b) => a + b, 0);
 }
 function calcEdit() {
-    const ids = ['icyacumi','meeting','amaturo','revival','ss','filide','umusaruro','ituro'];
+    const ids = ['icyacumi','icyacumi_cya_cms','meeting','amaturo','amaturo_bya_cms','revival','ss','filide','umusaruro','ituro'];
     let t = 0;
     ids.forEach(id => { t += sumValues(document.querySelector('[name="'+id+'"]').value); });
     document.getElementById('edit_grand').innerText = t;
+}
+const editIntaraSelect = document.getElementById('edit_intara_id');
+const editItoreroSelect = document.getElementById('edit_itorero_id');
+if (editIntaraSelect && editItoreroSelect) {
+    function filterEditItorero() {
+        const intaraId = editIntaraSelect.value;
+        editItoreroSelect.querySelectorAll('option').forEach(function (opt) {
+            if (!opt.value) return;
+            opt.hidden = intaraId !== '' && opt.dataset.intara !== intaraId;
+        });
+        if (editItoreroSelect.selectedOptions[0] && editItoreroSelect.selectedOptions[0].hidden) {
+            editItoreroSelect.value = '';
+        }
+    }
+    editIntaraSelect.addEventListener('change', filterEditItorero);
+    filterEditItorero();
 }
 calcEdit();
 </script>

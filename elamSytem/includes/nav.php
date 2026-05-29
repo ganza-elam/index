@@ -81,14 +81,15 @@ function renderNavDropdown($label, $iconName, $parentActive, $items) {
                 ['label' => 'Comparison (Pastoro vs Bank)', 'href' => 'reports.php?report_type=correct_report#comparison-pastor-bank', 'active' => false],
                 ['label' => 'Grand Totals (All sources)', 'href' => 'reports.php?report_type=correct_report#comparison-grand-totals', 'active' => false],
                 ['label' => 'Bank vs IBYANYUZE MUMA SUCHE', 'href' => 'reports.php?report_type=correct_report#comparison-bank-insert', 'active' => false],
+                ['label' => 'Itorero (Pastoro vs INSERT)', 'href' => 'reports.php?report_type=correct_report#comparison-itorero-offerings', 'active' => false],
                 ['label' => 'Mapato from Pastor', 'href' => 'reports.php?report_type=correct_report#mapato-pastor-table', 'active' => false],
                 ['label' => 'Bank Slips', 'href' => 'reports.php?report_type=correct_report#bank-slips-table', 'active' => false],
             ]);
             renderNavDropdown('RECEIPT REQUEST', 'receipt_long', $navIsReceiptRequest, [
                 ['label' => 'Stock (receipt ranges)', 'href' => 'receipt-request.php#receipt-stock', 'active' => $navIsReceiptRequest],
-                ['label' => 'Itorero — booklet limits', 'href' => 'receipt-request.php#itorero-receipt-limits', 'active' => false],
                 ['label' => 'Saba booklet (Admin)', 'href' => 'receipt-request.php#admin-request-behalf', 'active' => false],
                 ['label' => 'Pending requests', 'href' => 'receipt-request.php#pending-requests', 'active' => false],
+                ['label' => 'Pastor yemeje booklet', 'href' => 'receipt-request.php#pastor-acknowledged', 'active' => false],
                 ['label' => 'Receipt report (gone / returned)', 'href' => 'receipt-request.php#receipt-report', 'active' => false],
             ]);
             renderNavDropdown('ADMIN PORTAL', 'settings', $navIsAdmin, [
@@ -100,7 +101,6 @@ function renderNavDropdown($label, $iconName, $parentActive, $items) {
                 ['label' => 'List of Itorero', 'href' => 'admin.php#itorero-list', 'active' => false],
             ]);
             renderNavDropdown('REPORT', 'assessment', $navIsInsertReportView, [
-                ['label' => 'Filters & search record', 'href' => 'reports.php#report-filters', 'active' => $navIsInsertReportView],
                 ['label' => 'Summary & totals', 'href' => 'reports.php#report-summary', 'active' => false],
                 ['label' => 'Admin activity chart', 'href' => 'reports.php#admin-insert-chart', 'active' => false],
                 ['label' => 'Inserted data table', 'href' => 'reports.php#inserted-data-table', 'active' => false],
@@ -109,7 +109,7 @@ function renderNavDropdown($label, $iconName, $parentActive, $items) {
         <?php else: ?>
             <?php
             renderNavDropdown('REPORT', 'assessment', $navIsInsertReportView, [
-                ['label' => 'Filters & search record', 'href' => 'reports.php#report-filters', 'active' => $navIsInsertReportView],
+                ['label' => 'Summary & totals', 'href' => 'reports.php#report-summary', 'active' => false],
                 ['label' => 'Inserted data table', 'href' => 'reports.php#inserted-data-table', 'active' => false],
             ]);
             renderNavDropdown('RAPORO YIBYAKIRIWE', 'fact_check', $navIsCorrectReportView || $navIsComparisonSummaryView, [

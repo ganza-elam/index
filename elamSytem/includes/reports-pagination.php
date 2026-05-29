@@ -39,14 +39,15 @@ if ($totalPages <= 7) {
 
 $paginationReportType = $reportType ?? 'insert_data';
 $paginationSearch = $filter_search ?? '';
+$paginationHash = ($paginationReportType === 'insert_data') ? 'inserted-data-table' : '';
 $prevUrl = $currentPage > 1
-    ? buildReportsPageUrl($currentPage - 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch)
+    ? buildReportsPageUrl($currentPage - 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash)
     : null;
 $nextUrl = $currentPage < $totalPages
-    ? buildReportsPageUrl($currentPage + 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch)
+    ? buildReportsPageUrl($currentPage + 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash)
     : null;
-$firstUrl = buildReportsPageUrl(1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch);
-$lastUrl = buildReportsPageUrl($totalPages, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch);
+$firstUrl = buildReportsPageUrl(1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash);
+$lastUrl = buildReportsPageUrl($totalPages, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash);
 ?>
 <nav class="pagination-bar" aria-label="Pagination">
     <div class="pagination-summary">
@@ -83,7 +84,7 @@ $lastUrl = buildReportsPageUrl($totalPages, $filter_intara, $filter_itorero, $fi
                 <?php elseif ((int) $item === $currentPage): ?>
                     <span class="pagination-page is-active" aria-current="page" role="listitem"><?= (int) $item ?></span>
                 <?php else: ?>
-                    <a href="<?= htmlspecialchars(buildReportsPageUrl((int) $item, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch)) ?>"
+                    <a href="<?= htmlspecialchars(buildReportsPageUrl((int) $item, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash)) ?>"
                        class="pagination-page"
                        role="listitem"
                        aria-label="Page <?= (int) $item ?>"><?= (int) $item ?></a>

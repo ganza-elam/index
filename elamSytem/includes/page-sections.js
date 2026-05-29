@@ -29,16 +29,16 @@
         if (hash) {
             return hash;
         }
+        var bodyDefault = document.body.getAttribute('data-default-nav-section');
+        if (bodyDefault) {
+            return bodyDefault;
+        }
         var active = document.querySelector('.sidebar-dropdown-item.is-active');
         if (active) {
             var fromLink = sectionIdFromHref(active.getAttribute('href'));
             if (fromLink) {
                 return fromLink;
             }
-        }
-        var bodyDefault = document.body.getAttribute('data-default-nav-section');
-        if (bodyDefault) {
-            return bodyDefault;
         }
         var first = sections[0];
         return first ? first.getAttribute('data-nav-section') : '';

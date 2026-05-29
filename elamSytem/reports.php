@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/icons.php';
 
 define('REPORTS_PER_PAGE', 15);
 
-function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_month, $report_type = 'insert_data', $filter_search = '', $hash = '') {
+function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_month, $report_type = 'insert_data', $filter_search = '', $section = 'inserted-data-table') {
     $params = [];
     if ($report_type !== '' && $report_type !== 'insert_data') {
         $params['report_type'] = $report_type;
@@ -25,6 +25,8 @@ function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_mon
     if ($page > 1) {
         $params['page'] = $page;
     }
+    // Always carry section for pagination
+    $params['section'] = $section;
     $query = http_build_query($params);
     $url = 'reports.php' . ($query !== '' ? '?' . $query : '');
     if ($hash === '' && $report_type === 'insert_data' && $page > 1) {
@@ -327,7 +329,12 @@ if ($isGuest && $guestIntaraId !== null) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <?php endif; ?>
 </head>
-<body class="app-body" data-default-nav-section="<?= $reportType === 'correct_report' ? 'comparison-pastor-bank' : ($reportType === 'insert_data' ? (($currentPage > 1 || $filter_search !== '') ? 'inserted-data-table' : 'report-summary') : 'comparison-summary') ?>">
+<body ... data-default-nav-section="<?= 
+    $reportType === 'correct_report' ? 'comparison-pastor-bank' 
+    : ($reportType === 'insert_data' && isset($_GET['page']) ? 'inserted-data-table'
+    : ($reportType === 'insert_data' && !empty($_GET['section']) && $_GET['section'] !== 'report-filters' 
+        ? htmlspecialchars($_GET['section']) 
+        : ($reportType === 'insert_data' ? 'report-summary' : 'comparison-summary')))?>">
 <?php require __DIR__ . '/includes/nav.php'; ?>
 <div class="container">
     <div class="brand-header">
@@ -347,18 +354,9 @@ if ($isGuest && $guestIntaraId !== null) {
 
     <!-- Filters -->
     <div class="filters nav-page-section nav-page-section--always" id="report-filters" data-nav-section="report-filters">
-        <?php
-        $reportsFormHash = '';
-        if ($reportType === 'insert_data') {
-            $reportsFormHash = 'inserted-data-table';
-        } elseif ($reportType === 'comparison_summary') {
-            $reportsFormHash = 'comparison-summary';
-        } elseif ($reportType === 'correct_report') {
-            $reportsFormHash = 'comparison-pastor-bank';
-        }
-        ?>
-        <form method="GET" id="reports-filter-form" action="reports.php<?= $reportsFormHash !== '' ? '#' . $reportsFormHash : '' ?>">
-            <?php if ($reportType !== 'insert_data'): ?>
+        <form method="GET">
+        <input type="hidden" name="section" id="current_section" 
+           value="<?= htmlspecialchars($_GET['section'] ?? 'report-summary') ?>">
             <div>
                 <label>Ubwoko bwa raporo:</label>
                 <select name="report_type" id="report_type" onchange="toggleReportFilters()">
@@ -367,9 +365,7 @@ if ($isGuest && $guestIntaraId !== null) {
                     <option value="comparison_summary" <?= $reportType === 'comparison_summary' ? 'selected' : '' ?>>Comparison Summary &amp; PDF</option>
                 </select>
             </div>
-            <?php else: ?>
             <input type="hidden" name="report_type" value="insert_data">
-            <?php endif; ?>
             <div>
                 <label>search: Intara:</label>
                 <select name="intara_id" id="filter_intara" onchange="loadItoreroFilter()" <?= $isGuest && $guestIntaraId ? 'disabled' : '' ?>>

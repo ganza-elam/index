@@ -39,15 +39,18 @@ if ($totalPages <= 7) {
 
 $paginationReportType = $reportType ?? 'insert_data';
 $paginationSearch = $filter_search ?? '';
-$paginationHash = ($paginationReportType === 'insert_data') ? 'inserted-data-table' : '';
+$paginationSection = $_GET['section'] ?? 'inserted-data-table';
+
 $prevUrl = $currentPage > 1
-    ? buildReportsPageUrl($currentPage - 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash)
+    ? buildReportsPageUrl($currentPage - 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection)
     : null;
 $nextUrl = $currentPage < $totalPages
-    ? buildReportsPageUrl($currentPage + 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash)
+    ? buildReportsPageUrl($currentPage + 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection)
     : null;
-$firstUrl = buildReportsPageUrl(1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash);
-$lastUrl = buildReportsPageUrl($totalPages, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash);
+$firstUrl = buildReportsPageUrl(1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection);
+$lastUrl = buildReportsPageUrl($totalPages, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection);
+// And inside the loop:
+buildReportsPageUrl((int) $item, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection)
 ?>
 <nav class="pagination-bar" aria-label="Pagination">
     <div class="pagination-summary">

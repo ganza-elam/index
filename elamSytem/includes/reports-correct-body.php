@@ -247,27 +247,6 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
 </div>
 
 <div class="nav-page-section" data-nav-section="comparison-bank-insert" id="comparison-bank-insert">
-<h3><?= mi('compare_arrows', 22) ?> Comparison: Bank Slip vs IBYANYUZE MUMA SUCHE</h3>
-<p style="color:#666;margin-bottom:12px;">Gereranya grand total z'Intara: <strong>Bank Slip</strong> na <strong>IBYANYUZE MUMA SUCHE</strong> (imibare). Profit/Loss/Equal = Bank − INSERT.</p>
-
-<?php if ($filter_month === ''): ?>
-    <div class="no-data"><p>Hitamo <strong>Ukwezi</strong> kugira ngo urebe iyi comparison.</p></div>
-<?php elseif ($filter_intara === ''): ?>
-    <div class="alert" style="background:#fff3cd;padding:12px;border-radius:8px;margin-bottom:16px;color:#856404;">
-        Hitamo <strong>Intara</strong> kugira ngo urebe comparison y'iyo Intara, cyangwa ureke ubusa urebe Intara zose zifite data.
-    </div>
-<?php endif; ?>
-
-<?php if ($filter_month !== '' && empty($comparisonInsertRows)): ?>
-    <div class="no-data"><p>Nta data y'iyi Intara/Ukwezi — ongeraho IBYANYUZE MUMA SUCHE cyangwa bank slip.</p></div>
-<?php elseif ($filter_month !== '' && !empty($comparisonInsertRows)): ?>
-    <div class="table-wrap">
-    <?php require __DIR__ . '/comparison-table-bank-insert.php'; ?>
-    </div>
-<?php endif; ?>
-</div>
-
-<div class="nav-page-section" data-nav-section="comparison-itorero-offerings" id="comparison-itorero-offerings">
 <h3><?= mi('compare_arrows', 22) ?> Igereranya ku Itorero: IBYAKIRIWE KURI RAPORT vs IBYANYUZE MUMA SUCHE</h3>
 <p style="color:#666;margin-bottom:12px;">
     Iyi table igaragaza ku rwego rw'Itorero: Icyacumi (RECU + CFMS) na Amaturo (RECU + CFMS)

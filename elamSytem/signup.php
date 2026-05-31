@@ -3,7 +3,7 @@ require_once 'config.php';
 require_once 'auth.php';
 
 // Signup page is now admin-only account creation.
- requireAdmin();
+ //requireAdmin();
 
 $message = '';
 

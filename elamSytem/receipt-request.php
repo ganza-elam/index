@@ -23,30 +23,6 @@ $isGuest = isGuestUser();
 $message = '';
 
 
-if (!$isGuest && isset($_GET['export_acknowledged']) && $_GET['export_acknowledged'] === '1') {
-    $rows = getAcknowledgedReceiptRequests($pdo);
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="pastor_acknowledged_booklets.csv"');
-    $out = fopen('php://output', 'w');
-    fputcsv($out, ['Pastor', 'Itorero', 'Intara', 'Booklet', 'Acknowledged at', 'Requested by']);
-    foreach ($rows as $r) {
-        $label = ($r['range_start'] !== null && $r['range_end'] !== null)
-            ? receiptBookletLabel($r['range_start'], $r['range_end'])
-            : '';
-        fputcsv($out, [
-            $r['username'] ?? '',
-            $r['itorero_name'] ?? '',
-            $r['intara_name'] ?? '',
-            $label,
-            $r['acknowledged_at'] ?? '',
-            $r['requested_by_admin_name'] ?? 'Pastor',
-        ]);
-    }
-    fclose($out);
-    exit;
-}
-
-
 
 if (!$isGuest) {
 
@@ -142,6 +118,20 @@ if (!$isGuest) {
 
 
 
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_receipt_itorero_settings'])) {
+
+        $itoreroSettingsId = (int) ($_POST['itorero_settings_id'] ?? 0);
+
+        $maxBk = (int) ($_POST['receipt_max_booklets'] ?? RECEIPT_DEFAULT_MAX_BOOKLETS);
+
+        $canReq = isset($_POST['receipt_can_request']);
+
+        $result = updateItoreroReceiptSettings($pdo, $itoreroSettingsId, $maxBk, $canReq);
+
+        $message = '<div class="alert ' . ($result['success'] ? 'success' : 'error') . '">' . htmlspecialchars($result['message']) . '</div>';
+
+    }
+
 }
 
 
@@ -192,6 +182,14 @@ if ($isGuest && getGuestIntaraId() !== null) {
 
     $itoreroList = getItoreroByIntara($pdo, getGuestIntaraId());
 
+    foreach ($itoreroList as &$itRow) {
+
+        $itRow['receipt_quota'] = getItoreroReceiptQuota($pdo, (int) $itRow['id']);
+
+    }
+
+    unset($itRow);
+
 }
 
 
@@ -201,6 +199,8 @@ $myRequests = $isGuest ? getReceiptRequestsForUser($pdo, $userId) : [];
 
 
 $pendingReceiptRequests = [];
+
+$itoreroReceiptAdminList = [];
 
 $receiptStockList = [];
 
@@ -286,6 +286,8 @@ if (!$isGuest) {
 
     $receiptStockList = getReceiptStock($pdo);
 
+    $itoreroReceiptAdminList = getItoreroListForReceiptAdmin($pdo);
+
     $guestPastorsList = getGuestPastorsForReceiptAdmin($pdo);
 
     $allItoreroForAdmin = getAllItorero($pdo);
@@ -332,7 +334,7 @@ if (!$isGuest) {
 
 
 
-    <p style="text-align:right;color:#666;">May The Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
 
     <?= $message ?>
 
@@ -347,6 +349,8 @@ if (!$isGuest) {
         <p style="color:#666;margin-bottom:16px;font-size:14px;">
 
             Admin aguha receipts nk'urugero rimwe: <strong>0012500 to 0012750</strong> (ntibigabanywa).
+
+            Buri <strong>Itorero</strong> gifite limit y'ubwayo (urugero 5 booklet) — Itorero kindi ntigikingiwe.
 
             Igaruka ry'ibitabo Admin ayemeza kuri iyi page — reba raporo yawe hepfo.
 
@@ -372,9 +376,31 @@ if (!$isGuest) {
 
                             <option value="">-- Hitamo Itorero --</option>
 
-                            <?php foreach ($itoreroList as $it): ?>
+                            <?php foreach ($itoreroList as $it):
 
-                                <option value="<?= (int) $it['id'] ?>"><?= htmlspecialchars($it['name']) ?></option>
+                                $q = $it['receipt_quota'] ?? getItoreroReceiptQuota($pdo, (int) $it['id']);
+
+                                $optLabel = $it['name'] . ' (' . $q['used_slots'] . '/' . $q['max_booklets'] . ' booklet';
+
+                                if (!$q['can_request']) {
+
+                                    $optLabel .= ' — blocked';
+
+                                } elseif ($q['available_slots'] <= 0) {
+
+                                    $optLabel .= ' — full';
+
+                                } else {
+
+                                    $optLabel .= ', ' . $q['available_slots'] . ' available';
+
+                                }
+
+                                $optLabel .= ')';
+
+                            ?>
+
+                                <option value="<?= (int) $it['id'] ?>"><?= htmlspecialchars($optLabel) ?></option>
 
                             <?php endforeach; ?>
 
@@ -382,9 +408,72 @@ if (!$isGuest) {
 
                     </div>
 
+                    <p id="itorero_quota_hint" style="font-size:13px;color:#666;margin-top:8px;"></p>
+
                     <button type="submit" name="create_request">Ohereza request kuri Admin</button>
 
                 </form>
+
+                <?php
+                $itoreroQuotasJs = [];
+                foreach ($itoreroList as $it) {
+                    $q = $it['receipt_quota'] ?? getItoreroReceiptQuota($pdo, (int) $it['id']);
+                    $itoreroQuotasJs[(string) $it['id']] = [
+                        'max' => (int) $q['max_booklets'],
+                        'used' => (int) $q['used_slots'],
+                        'available' => (int) $q['available_slots'],
+                        'can_request' => !empty($q['can_request']),
+                        'can_create' => !empty($q['can_create']),
+                    ];
+                }
+                ?>
+                <script>
+
+                (function() {
+
+                    const quotas = <?= json_encode($itoreroQuotasJs) ?>;
+
+                    const sel = document.getElementById('itorero_request_select');
+
+                    const hint = document.getElementById('itorero_quota_hint');
+
+                    function updateHint() {
+
+                        const id = sel.value;
+
+                        if (!id || !quotas[id]) {
+
+                            hint.textContent = '';
+
+                            return;
+
+                        }
+
+                        const q = quotas[id];
+
+                        if (!q.can_request) {
+
+                            hint.innerHTML = '<span style="color:#c62828;">Admin yaguze gusaba kuri iri Torero.</span>';
+
+                        } else if (!q.can_create) {
+
+                            hint.innerHTML = '<span style="color:#856404;">Iri Torero rifite booklet ' + q.max + ' zose. Garura imwe cyangwa hitamo Itorero kindi.</span>';
+
+                        } else {
+
+                            hint.textContent = 'Iri Torero: ' + q.used + '/' + q.max + ' zikoreshwa — ' + q.available + ' ushobora gusaba.';
+
+                        }
+
+                    }
+
+                    sel.addEventListener('change', updateHint);
+
+                    updateHint();
+
+                })();
+
+                </script>
 
             </div>
 
@@ -519,6 +608,92 @@ if (!$isGuest) {
 
 
 
+        <div class="section nav-page-section" data-nav-section="itorero-receipt-limits" id="itorero-receipt-limits" style="padding:20px;border:1px solid #ddd;border-radius:8px;margin-bottom:24px;">
+
+            <h3><?= mi('church', 22) ?> Itorero — booklet limits</h3>
+
+            <p style="font-size:13px;color:#666;margin-bottom:12px;">Buri Itorero gifite limit y'ubwayo (urugero 5 booklet). Itorero rimwe ntirigira indi. Iyo booklet igarutse kuri iri Torero, pastoro ashobora gusaba indi kuri iyo Torero gusa.</p>
+
+            <?php if (empty($itoreroReceiptAdminList)): ?>
+
+                <p>Nta Itorero rihari.</p>
+
+            <?php else: ?>
+
+            <div class="table-wrap">
+
+            <table style="width:100%;">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Itorero</th>
+
+                        <th>Intara</th>
+
+                        <th>In use</th>
+
+                        <th>Max</th>
+
+                        <th>Can request</th>
+
+                        <th>Igenamiterere</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                <?php foreach ($itoreroReceiptAdminList as $itLim): ?>
+
+                <tr>
+
+                    <td><strong><?= htmlspecialchars($itLim['itorero_name']) ?></strong></td>
+
+                    <td><?= htmlspecialchars($itLim['intara_name'] ?? '—') ?></td>
+
+                    <td><?= (int) $itLim['used_slots'] ?> / <?= (int) $itLim['receipt_max_booklets'] ?></td>
+
+                    <td colspan="3">
+
+                        <form method="POST" class="form-row" style="margin:0;flex-wrap:wrap;gap:8px;">
+
+                            <input type="hidden" name="itorero_settings_id" value="<?= (int) $itLim['id'] ?>">
+
+                            <input type="number" name="receipt_max_booklets" value="<?= (int) $itLim['receipt_max_booklets'] ?>" min="1" max="50" style="width:70px;" required>
+
+                            <label style="display:inline-flex;align-items:center;gap:4px;margin:0;">
+
+                                <input type="checkbox" name="receipt_can_request" value="1" <?= !empty($itLim['receipt_can_request']) ? 'checked' : '' ?>>
+
+                                Emera gusaba
+
+                            </label>
+
+                            <button type="submit" name="save_receipt_itorero_settings">Bika</button>
+
+                        </form>
+
+                    </td>
+
+                </tr>
+
+                <?php endforeach; ?>
+
+                </tbody>
+
+            </table>
+
+            </div>
+
+            <?php endif; ?>
+
+        </div>
+
+
+
         <div class="section nav-page-section" data-nav-section="admin-request-behalf" id="admin-request-behalf" style="padding:20px;border:1px solid #ddd;border-radius:8px;margin-bottom:24px;">
 
             <h3>Saba booklet ku izina rya Pastor (Admin)</h3>
@@ -629,15 +804,7 @@ if (!$isGuest) {
 
             <h3><?= mi('check_circle', 22) ?> Pastor yemeje ko yafashe booklet</h3>
 
-            <p style="font-size:13px;color:#666;margin-bottom:12px;">Iyi list igaragaza pastoro bemeye ko babonye receipt/booklet (Nemeza ko nabonye receipts) — ndetse n'iyo booklet yamaze kugaruka.</p>
-
-            <?php if (!empty($acknowledgedReceiptRequests) && !$isGuest): ?>
-                <p style="margin-bottom:12px;">
-                    <a href="receipt-request.php?export_acknowledged=1" class="btn-icon">
-                        <?= mi_btn('download', 'Download CSV') ?>
-                    </a>
-                </p>
-            <?php endif; ?>
+            <p style="font-size:13px;color:#666;margin-bottom:12px;">Iyi list igaragaza pastoro bemeye ko babonye receipt/booklet (Nemeza ko nabonye receipts).</p>
 
             <?php if (empty($acknowledgedReceiptRequests)): ?>
 

@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/icons.php';
 
 define('REPORTS_PER_PAGE', 15);
 
-function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_month, $report_type = 'insert_data', $filter_search = '', $section = 'inserted-data-table') {
+function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_month, $report_type = 'insert_data', $filter_search = '', $hash = '') {
     $params = [];
     if ($report_type !== '' && $report_type !== 'insert_data') {
         $params['report_type'] = $report_type;
@@ -25,8 +25,6 @@ function buildReportsPageUrl($page, $filter_intara, $filter_itorero, $filter_mon
     if ($page > 1) {
         $params['page'] = $page;
     }
-    // Always carry section for pagination
-    $params['section'] = $section;
     $query = http_build_query($params);
     $url = 'reports.php' . ($query !== '' ? '?' . $query : '');
     if ($hash === '' && $report_type === 'insert_data' && $page > 1) {
@@ -329,12 +327,7 @@ if ($isGuest && $guestIntaraId !== null) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <?php endif; ?>
 </head>
-<body ... data-default-nav-section="<?= 
-    $reportType === 'correct_report' ? 'comparison-pastor-bank' 
-    : ($reportType === 'insert_data' && isset($_GET['page']) ? 'inserted-data-table'
-    : ($reportType === 'insert_data' && !empty($_GET['section']) && $_GET['section'] !== 'report-filters' 
-        ? htmlspecialchars($_GET['section']) 
-        : ($reportType === 'insert_data' ? 'report-summary' : 'comparison-summary')))?>">
+<body class="app-body" data-default-nav-section="<?= $reportType === 'correct_report' ? 'comparison-pastor-bank' : ($reportType === 'insert_data' ? (($currentPage > 1 || $filter_search !== '') ? 'inserted-data-table' : 'report-summary') : 'comparison-summary') ?>">
 <?php require __DIR__ . '/includes/nav.php'; ?>
 <div class="container">
     <div class="brand-header">
@@ -345,18 +338,25 @@ if ($isGuest && $guestIntaraId !== null) {
         </div>
     </div>
     
-    <p style="text-align:right;color:#666;">May The Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <?php if ($reportType === 'insert_data'): ?>
     <h1><?= mi('assessment', 28) ?> Raporo ya mapato A na Mapato B</h1>
     <?php endif; ?>
 
+    <?php
+    $filterFormHash = 'inserted-data-table';
+    if ($reportType === 'correct_report') {
+        $filterFormHash = 'comparison-pastor-bank';
+    } elseif ($reportType === 'comparison_summary') {
+        $filterFormHash = 'comparison-summary';
+    }
+    ?>
     <!-- Filters -->
     <div class="filters nav-page-section nav-page-section--always" id="report-filters" data-nav-section="report-filters">
-        <form method="GET">
-        <input type="hidden" name="section" id="current_section" 
-           value="<?= htmlspecialchars($_GET['section'] ?? 'report-summary') ?>">
+        <form method="GET" id="report_filters_form" action="reports.php#<?= htmlspecialchars($filterFormHash) ?>">
+            <?php if ($reportType !== 'insert_data'): ?>
             <div>
                 <label>Ubwoko bwa raporo:</label>
                 <select name="report_type" id="report_type" onchange="toggleReportFilters()">
@@ -365,7 +365,9 @@ if ($isGuest && $guestIntaraId !== null) {
                     <option value="comparison_summary" <?= $reportType === 'comparison_summary' ? 'selected' : '' ?>>Comparison Summary &amp; PDF</option>
                 </select>
             </div>
+            <?php else: ?>
             <input type="hidden" name="report_type" value="insert_data">
+            <?php endif; ?>
             <div>
                 <label>search: Intara:</label>
                 <select name="intara_id" id="filter_intara" onchange="loadItoreroFilter()" <?= $isGuest && $guestIntaraId ? 'disabled' : '' ?>>
@@ -843,25 +845,21 @@ function downloadMapatoA() {
         });
 }
 
-// Keep the active comparison section visible after Search (page-sections.js uses the hash).
-(function () {
-    var form = document.getElementById('reports-filter-form');
-    if (!form) {
-        return;
+// Keep the current report section when searching (sidebar hash links)
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.getElementById('report_filters_form');
+    if (filterForm) {
+        filterForm.addEventListener('submit', function() {
+            let hash = window.location.hash.replace(/^#/, '');
+            if (!hash || hash === 'report-filters') {
+                hash = document.body.getAttribute('data-default-nav-section') || '';
+            }
+            if (hash && document.querySelector('.nav-page-section[data-nav-section="' + hash + '"]')) {
+                filterForm.action = 'reports.php#' + hash;
+            }
+        });
     }
-    form.addEventListener('submit', function () {
-        var rtEl = document.getElementById('report_type');
-        var rt = rtEl ? rtEl.value : 'insert_data';
-        if (rt !== 'correct_report' && rt !== 'comparison_summary') {
-            return;
-        }
-        var hash = window.location.hash.replace(/^#/, '');
-        if (!hash) {
-            hash = rt === 'comparison_summary' ? 'comparison-summary' : 'comparison-pastor-bank';
-        }
-        form.action = 'reports.php#' + hash;
-    });
-})();
+});
 
 // Initialize filter on page load
 document.addEventListener('DOMContentLoaded', function() {

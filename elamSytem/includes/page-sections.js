@@ -26,6 +26,10 @@
 
     function resolveActiveSectionId() {
         var hash = window.location.hash.replace(/^#/, '');
+        // Filter bar is always visible; do not hide report tables when Search uses #report-filters
+        if (hash === 'report-filters') {
+            hash = '';
+        }
         if (hash) {
             return hash;
         }
@@ -42,17 +46,6 @@
         }
         var first = sections[0];
         return first ? first.getAttribute('data-nav-section') : '';
-    }
-    
-    function updateUrlSection(sectionId) {
-        var el = document.querySelector('.nav-page-section[data-nav-section="' + sectionId + '"]');
-        if (!el || el.classList.contains('nav-page-section--always')) {
-            return;
-        }
-        var url = new URL(window.location.href);
-        url.searchParams.set('section', sectionId);
-        url.hash = '';
-        history.replaceState(null, '', url.pathname + url.search);
     }
 
     function applySections() {
@@ -81,7 +74,6 @@
         });
 
         window.dispatchEvent(new CustomEvent('nav-section-changed', { detail: { sectionId: activeId } }));
-        updateUrlSection(activeId);
     }
 
     window.addEventListener('hashchange', applySections);

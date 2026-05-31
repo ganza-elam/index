@@ -39,18 +39,23 @@ if ($totalPages <= 7) {
 
 $paginationReportType = $reportType ?? 'insert_data';
 $paginationSearch = $filter_search ?? '';
-$paginationSection = $_GET['section'] ?? 'inserted-data-table';
-
+if ($paginationReportType === 'insert_data') {
+    $paginationHash = 'inserted-data-table';
+} elseif ($paginationReportType === 'correct_report') {
+    $paginationHash = 'mapato-pastor-table';
+} elseif ($paginationReportType === 'comparison_summary') {
+    $paginationHash = 'comparison-summary';
+} else {
+    $paginationHash = '';
+}
 $prevUrl = $currentPage > 1
-    ? buildReportsPageUrl($currentPage - 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection)
+    ? buildReportsPageUrl($currentPage - 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash)
     : null;
 $nextUrl = $currentPage < $totalPages
-    ? buildReportsPageUrl($currentPage + 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection)
+    ? buildReportsPageUrl($currentPage + 1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash)
     : null;
-$firstUrl = buildReportsPageUrl(1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection);
-$lastUrl = buildReportsPageUrl($totalPages, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection);
-// And inside the loop:
-buildReportsPageUrl((int) $item, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationSection)
+$firstUrl = buildReportsPageUrl(1, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash);
+$lastUrl = buildReportsPageUrl($totalPages, $filter_intara, $filter_itorero, $filter_month, $paginationReportType, $paginationSearch, $paginationHash);
 ?>
 <nav class="pagination-bar" aria-label="Pagination">
     <div class="pagination-summary">

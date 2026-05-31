@@ -1092,3 +1092,48 @@ tfoot tr {
 tfoot td {
     color: #333;
 }
+
+/* Password input with show/hide toggle */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input[type="password"],
+.password-wrapper input[type="text"] {
+    width: 100%;
+    padding-right: 40px; /* make room for the button */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 0px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0px;
+    display: flex;
+    align-items: center;
+    color: #888;
+    height: 20px;
+    width: 30px;
+}
+
+.password-toggle svg {
+    width: 18px;
+    height: 18px;
+    margin-inline: auto;
+}
+
+.password-toggle .icon-hide {
+    display: none;
+}
+
+.password-toggle[data-shown="true"] .icon-show {
+    display: none;
+}
+
+.password-toggle[data-shown="true"] .icon-hide {
+    display: block;
+}

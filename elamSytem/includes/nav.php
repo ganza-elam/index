@@ -86,7 +86,7 @@ function renderNavDropdown($label, $iconName, $parentActive, $items) {
             ]);
             renderNavDropdown('RECEIPT REQUEST', 'receipt_long', $navIsReceiptRequest, [
                 ['label' => 'Stock (receipt ranges)', 'href' => 'receipt-request.php#receipt-stock', 'active' => $navIsReceiptRequest],
-                ['label' => 'Itorero — booklet limits', 'href' => 'receipt-request.php#itorero-receipt-limits', 'active' => false],
+                // ['label' => 'Itorero — booklet limits', 'href' => 'receipt-request.php#itorero-receipt-limits', 'active' => false],
                 ['label' => 'Saba booklet (Admin)', 'href' => 'receipt-request.php#admin-request-behalf', 'active' => false],
                 ['label' => 'Pending requests', 'href' => 'receipt-request.php#pending-requests', 'active' => false],
                 ['label' => 'Pastor yemeje booklet', 'href' => 'receipt-request.php#pastor-acknowledged', 'active' => false],

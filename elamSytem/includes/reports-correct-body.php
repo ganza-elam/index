@@ -251,7 +251,8 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
 <p style="color:#666;margin-bottom:12px;">
     Iyi table igaragaza ku rwego rw'Itorero: Icyacumi (RECU + CFMS) na Amaturo (RECU + CFMS)
     hagati ya <strong>IBYAKIRIWE KURI RAPORT</strong> na <strong>IBYANYUZE MUMA SUCHE</strong>.
-    Difference = (IBYANYUZE MUMA SUCHE − IBYAKIRIWE KURI RAPORT).
+    Ku <strong>Amaturo</strong>: RECU, CFMS na Total (RECU + CFMS) byerekana amafaranga yose; igice cya <strong>÷2</strong> ni Total ÷ 2 ku mpande zombi.
+    Amaturo Difference = (IBYANYUZE MUMA SUCHE ÷2 − IBYAKIRIWE KURI RAPORT ÷2).
 </p>
 <?php if ($filter_month === ''): ?>
     <div class="no-data"><p>Hitamo <strong>Ukwezi</strong> kugira ngo ubone igereranya ku Itorero.</p></div>
@@ -270,17 +271,17 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
                 <th rowspan="2">Intara</th>
                 <th rowspan="2">Itorero</th>
                 <th colspan="3">IBYAKIRIWE KURI RAPORT — Icyacumi</th>
-                <th colspan="3">IBYAKIRIWE KURI RAPORT — Amaturo</th>
+                <th colspan="4">IBYAKIRIWE KURI RAPORT — Amaturo</th>
                 <th colspan="3">IBYANYUZE MUMA SUCHE — Icyacumi</th>
-                <th colspan="3">IBYANYUZE MUMA SUCHE — Amaturo</th>
+                <th colspan="4">IBYANYUZE MUMA SUCHE — Amaturo</th>
                 <th colspan="2">Icyacumi Diff</th>
-                <th colspan="2">Amaturo Diff</th>
+                <th colspan="2">Amaturo Diff (÷2)</th>
             </tr>
             <tr>
                 <th>RECU</th><th>CFMS</th><th>Total</th>
+                <th>RECU</th><th>CFMS</th><th>Total</th><th>÷2</th>
                 <th>RECU</th><th>CFMS</th><th>Total</th>
-                <th>RECU</th><th>CFMS</th><th>Total</th>
-                <th>RECU</th><th>CFMS</th><th>Total</th>
+                <th>RECU</th><th>CFMS</th><th>Total</th><th>÷2</th>
                 <th>Difference</th><th>Status</th>
                 <th>Difference</th><th>Status</th>
             </tr>
@@ -288,15 +289,19 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
         <tbody>
             <?php
             $tot = [
-                'p_ir' => 0, 'p_ic' => 0, 'p_it' => 0, 'p_ar' => 0, 'p_ac' => 0, 'p_at' => 0,
-                'm_ir' => 0, 'm_ic' => 0, 'm_it' => 0, 'm_ar' => 0, 'm_ac' => 0, 'm_at' => 0,
+                'p_ir' => 0, 'p_ic' => 0, 'p_it' => 0,
+                'p_ar' => 0, 'p_ac' => 0, 'p_at' => 0, 'p_ah' => 0,
+                'm_ir' => 0, 'm_ic' => 0, 'm_it' => 0,
+                'm_ar' => 0, 'm_ac' => 0, 'm_at' => 0, 'm_ah' => 0,
                 'd_i' => 0, 'd_a' => 0,
             ];
             foreach ($itoreroComparisonRows as $row):
                 $tot['p_ir'] += $row['pastor_icyacumi_recu']; $tot['p_ic'] += $row['pastor_icyacumi_cfms']; $tot['p_it'] += $row['pastor_icyacumi_total'];
                 $tot['p_ar'] += $row['pastor_amaturo_recu']; $tot['p_ac'] += $row['pastor_amaturo_cfms']; $tot['p_at'] += $row['pastor_amaturo_total'];
+                $tot['p_ah'] += $row['pastor_amaturo_half'];
                 $tot['m_ir'] += $row['insert_icyacumi_recu']; $tot['m_ic'] += $row['insert_icyacumi_cfms']; $tot['m_it'] += $row['insert_icyacumi_total'];
                 $tot['m_ar'] += $row['insert_amaturo_recu']; $tot['m_ac'] += $row['insert_amaturo_cfms']; $tot['m_at'] += $row['insert_amaturo_total'];
+                $tot['m_ah'] += $row['insert_amaturo_half'];
                 $tot['d_i'] += $row['diff_icyacumi']; $tot['d_a'] += $row['diff_amaturo'];
             ?>
             <tr>
@@ -308,12 +313,14 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
                 <td><?= number_format($row['pastor_amaturo_recu'], 0) ?></td>
                 <td><?= number_format($row['pastor_amaturo_cfms'], 0) ?></td>
                 <td><strong><?= number_format($row['pastor_amaturo_total'], 0) ?></strong></td>
+                <td><strong><?= number_format($row['pastor_amaturo_half'], 0) ?></strong></td>
                 <td><?= number_format($row['insert_icyacumi_recu'], 0) ?></td>
                 <td><?= number_format($row['insert_icyacumi_cfms'], 0) ?></td>
                 <td><strong><?= number_format($row['insert_icyacumi_total'], 0) ?></strong></td>
                 <td><?= number_format($row['insert_amaturo_recu'], 0) ?></td>
                 <td><?= number_format($row['insert_amaturo_cfms'], 0) ?></td>
                 <td><strong><?= number_format($row['insert_amaturo_total'], 0) ?></strong></td>
+                <td><strong><?= number_format($row['insert_amaturo_half'], 0) ?></strong></td>
                 <td><?= number_format($row['diff_icyacumi'], 0) ?></td>
                 <td><span class="cr-status cr-status-<?= $row['status_icyacumi'] ?>"><?= htmlspecialchars($row['status_icyacumi_label']) ?></span></td>
                 <td><?= number_format($row['diff_amaturo'], 0) ?></td>
@@ -325,13 +332,13 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
             <tr style="background:#e8f5e9;font-weight:bold;">
                 <td colspan="2">TOTAL</td>
                 <td><?= number_format($tot['p_ir'], 0) ?></td><td><?= number_format($tot['p_ic'], 0) ?></td><td><?= number_format($tot['p_it'], 0) ?></td>
-                <td><?= number_format($tot['p_ar'], 0) ?></td><td><?= number_format($tot['p_ac'], 0) ?></td><td><?= number_format($tot['p_at'], 0) ?></td>
+                <td><?= number_format($tot['p_ar'], 0) ?></td><td><?= number_format($tot['p_ac'], 0) ?></td><td><?= number_format($tot['p_at'], 0) ?></td><td><?= number_format($tot['p_ah'], 0) ?></td>
                 <td><?= number_format($tot['m_ir'], 0) ?></td><td><?= number_format($tot['m_ic'], 0) ?></td><td><?= number_format($tot['m_it'], 0) ?></td>
-                <td><?= number_format($tot['m_ar'], 0) ?></td><td><?= number_format($tot['m_ac'], 0) ?></td><td><?= number_format($tot['m_at'], 0) ?></td>
+                <td><?= number_format($tot['m_ar'], 0) ?></td><td><?= number_format($tot['m_ac'], 0) ?></td><td><?= number_format($tot['m_at'], 0) ?></td><td><?= number_format($tot['m_ah'], 0) ?></td>
                 <td><?= number_format($tot['d_i'], 0) ?></td>
                 <td><?php [$sI,$lI] = correctReportStatusFromDiff($tot['d_i']); ?><span class="cr-status cr-status-<?= $sI ?>"><?= $lI ?></span></td>
-                <td><?= number_format($tot['d_a'], 0) ?></td>
-                <td><?php [$sA,$lA] = correctReportStatusFromDiff($tot['d_a']); ?><span class="cr-status cr-status-<?= $sA ?>"><?= $lA ?></span></td>
+                <td><?= number_format($tot['m_ah'] - $tot['p_ah'], 0) ?></td>
+                <td><?php [$sA,$lA] = correctReportStatusFromDiff($tot['m_ah'] - $tot['p_ah']); ?><span class="cr-status cr-status-<?= $sA ?>"><?= $lA ?></span></td>
             </tr>
         </tfoot>
     </table>

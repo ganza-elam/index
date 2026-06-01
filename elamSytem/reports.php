@@ -338,7 +338,7 @@ if ($isGuest && $guestIntaraId !== null) {
         </div>
     </div>
     
-    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <?php if ($reportType === 'insert_data'): ?>

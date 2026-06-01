@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'auth.php';
+require_once __DIR__ . '/includes/imibare-math.php';
 requireLogin();
 
 $intara_id = $_GET['intara_id'] ?? null;
@@ -90,8 +91,8 @@ foreach ($imibareList as $row) {
     $totalsByItorero[$itoreroId]['icyacumi'] += extractSum($row['icyacumi']);
     $totalsByItorero[$itoreroId]['ibindi'] += extractSum($row['ibindi']);
     $totalsByItorero[$itoreroId]['icyacumi_cya_cms'] += extractSum($row['icyacumi_cya_cms']);
-    $totalsByItorero[$itoreroId]['amaturo'] += extractSum($row['amaturo']);
-    $totalsByItorero[$itoreroId]['amaturo_bya_cms'] += extractSum($row['amaturo_bya_cms']);
+    $totalsByItorero[$itoreroId]['amaturo'] += extractAmaturoComparableSum($row['amaturo'] ?? '');
+    $totalsByItorero[$itoreroId]['amaturo_bya_cms'] += extractAmaturoComparableSum($row['amaturo_bya_cms'] ?? '');
     $totalsByItorero[$itoreroId]['umusaruro'] += extractSum($row['umusaruro']);
     $totalsByItorero[$itoreroId]['ituro'] += extractSum($row['ituro']);
     $totalsByItorero[$itoreroId]['filide'] += extractSum($row['filide']);

@@ -122,6 +122,7 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
     <table class="pdf-table">
         <thead>
             <tr>
+                <th>Itorero</th>
                 <th>Icyacumi</th>
                 <th>CM</th>
                 <th>Amaturo</th>
@@ -139,6 +140,7 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
                 $meetingDisplay = mapatoPastorMeeting($record);
             ?>
             <tr>
+                <td><strong><?= htmlspecialchars($record['itorero_name'] ?? '—') ?></strong></td>
                 <td><?= htmlspecialchars($record['icyacumi'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($meetingDisplay ?: '0') ?></td>
                 <td><?= htmlspecialchars($record['amaturo'] ?? '0') ?></td>
@@ -154,7 +156,7 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
         </tbody>
         <tfoot>
             <tr class="pdf-tfoot-row">
-                <td colspan="8">TOTAL (<?= count($mapatoPastorList) ?>)</td>
+                <td colspan="9">TOTAL (<?= count($mapatoPastorList) ?>)</td>
                 <td><?= number_format($pTotalAll, 0) ?></td>
                 <td></td>
             </tr>

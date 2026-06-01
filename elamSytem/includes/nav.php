@@ -15,6 +15,8 @@ $navIsCorrectEntry = in_array($navScript, ['correct-report.php', 'edit-mapato-pa
 $navIsReceiptRequest = ($navScript === 'receipt-request.php');
 $navIsAdmin = ($navScript === 'admin.php');
 $navIsInsertData = ($navScript === 'index.php');
+$navIsTransFunds = ($navScript === 'trans-funds.php');
+$navTransFundsView = $_GET['view'] ?? 'amaturo';
 
 function navLinkClass($active) {
     return $active ? 'sidebar-link is-active' : 'sidebar-link';
@@ -84,6 +86,10 @@ function renderNavDropdown($label, $iconName, $parentActive, $items) {
                 ['label' => 'Mapato from Pastor', 'href' => 'reports.php?report_type=correct_report#mapato-pastor-table', 'active' => false],
                 ['label' => 'Bank Slips', 'href' => 'reports.php?report_type=correct_report#bank-slips-table', 'active' => false],
             ]);
+            renderNavDropdown('TRANS-FUNDS', 'swap_horiz', $navIsTransFunds, [
+                ['label' => 'Amaturo (Offerings)', 'href' => 'trans-funds.php?view=amaturo', 'active' => $navIsTransFunds && $navTransFundsView === 'amaturo'],
+                ['label' => 'Icyacumi (Tithe)', 'href' => 'trans-funds.php?view=icyacumi', 'active' => $navIsTransFunds && $navTransFundsView === 'icyacumi'],
+            ]);
             renderNavDropdown('RECEIPT REQUEST', 'receipt_long', $navIsReceiptRequest, [
                 ['label' => 'Stock (receipt ranges)', 'href' => 'receipt-request.php#receipt-stock', 'active' => $navIsReceiptRequest],
                 // ['label' => 'Itorero — booklet limits', 'href' => 'receipt-request.php#itorero-receipt-limits', 'active' => false],
@@ -118,6 +124,10 @@ function renderNavDropdown($label, $iconName, $parentActive, $items) {
                 ['label' => 'Grand Totals (All sources)', 'href' => 'reports.php?report_type=correct_report#comparison-grand-totals', 'active' => false],
                 ['label' => 'Mapato from Pastor', 'href' => 'reports.php?report_type=correct_report#mapato-pastor-table', 'active' => false],
                 ['label' => 'Bank Slips', 'href' => 'reports.php?report_type=correct_report#bank-slips-table', 'active' => false],
+            ]);
+            renderNavDropdown('TRANS-FUNDS', 'swap_horiz', $navIsTransFunds, [
+                ['label' => 'Amaturo (Offerings)', 'href' => 'trans-funds.php?view=amaturo', 'active' => $navIsTransFunds && $navTransFundsView === 'amaturo'],
+                ['label' => 'Icyacumi (Tithe)', 'href' => 'trans-funds.php?view=icyacumi', 'active' => $navIsTransFunds && $navTransFundsView === 'icyacumi'],
             ]);
             renderNavDropdown('RECEIPT REQUEST', 'receipt_long', $navIsReceiptRequest, [
                 ['label' => 'Request receipt', 'href' => 'receipt-request.php#request-form', 'active' => $navIsReceiptRequest],

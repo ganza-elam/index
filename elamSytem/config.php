@@ -738,8 +738,8 @@ function aggregateImibareByItorero(array $imibareList, $intaraName = '') {
         $totalsByItorero[$itoreroKey]['icyacumi'] += extractSumFromStored($row['icyacumi'] ?? '');
         $totalsByItorero[$itoreroKey]['ibindi'] += extractSumFromStored($row['ibindi'] ?? '');
         $totalsByItorero[$itoreroKey]['icyacumi_cya_cms'] += extractSumFromStored($row['icyacumi_cya_cms'] ?? '');
-        $totalsByItorero[$itoreroKey]['amaturo'] += extractSumFromStored($row['amaturo'] ?? '');
-        $totalsByItorero[$itoreroKey]['amaturo_bya_cms'] += extractSumFromStored($row['amaturo_bya_cms'] ?? '');
+        $totalsByItorero[$itoreroKey]['amaturo'] += extractAmaturoComparableSum($row['amaturo'] ?? '');
+        $totalsByItorero[$itoreroKey]['amaturo_bya_cms'] += extractAmaturoComparableSum($row['amaturo_bya_cms'] ?? '');
         $totalsByItorero[$itoreroKey]['umusaruro'] += extractSumFromStored($row['umusaruro'] ?? '');
         $totalsByItorero[$itoreroKey]['ituro'] += extractSumFromStored($row['ituro'] ?? '');
         $totalsByItorero[$itoreroKey]['filide'] += extractSumFromStored($row['filide'] ?? '');
@@ -811,7 +811,7 @@ function getMapatoASummaryByIntara($pdo, $month, $intara_id = null) {
         $byIntara[$iid]['grand_total'] += (float) ($row['total'] ?? 0);
         $byIntara[$iid]['icyacumi'] += extractSumFromStored($row['icyacumi'] ?? '');
         $byIntara[$iid]['ibindi'] += extractSumFromStored($row['ibindi'] ?? '');
-        $byIntara[$iid]['amaturo'] += extractSumFromStored($row['amaturo'] ?? '') + extractSumFromStored($row['amaturo_bya_cms'] ?? '');
+        $byIntara[$iid]['amaturo'] += extractAmaturoComparableSum($row['amaturo'] ?? '') + extractAmaturoComparableSum($row['amaturo_bya_cms'] ?? '');
 
         $tid = (int) ($row['itorero_id'] ?? 0);
         $tkey = $tid > 0 ? 'id_' . $tid : 'name_' . ($row['itorero_name'] ?? 'unknown');
@@ -1082,8 +1082,8 @@ function getItoreroOfferingsComparison($pdo, $month, $intara_id = null, $itorero
         }
         $rowsByItorero[$id]['pastor_icyacumi_recu'] += extractSumFromStored($row['icyacumi'] ?? '');
         $rowsByItorero[$id]['pastor_icyacumi_cfms'] += extractSumFromStored($row['icyacumi_cya_cms'] ?? '');
-        $rowsByItorero[$id]['pastor_amaturo_recu'] += extractSumFromStored($row['amaturo'] ?? '');
-        $rowsByItorero[$id]['pastor_amaturo_cfms'] += extractSumFromStored($row['amaturo_bya_cms'] ?? '');
+        $rowsByItorero[$id]['pastor_amaturo_recu'] += extractAmaturoGrossSumFromStored($row['amaturo'] ?? '');
+        $rowsByItorero[$id]['pastor_amaturo_cfms'] += extractAmaturoGrossSumFromStored($row['amaturo_bya_cms'] ?? '');
     }
     foreach ($insertDataList as $row) {
         $id = (int) ($row['itorero_id'] ?? 0);
@@ -1107,18 +1107,24 @@ function getItoreroOfferingsComparison($pdo, $month, $intara_id = null, $itorero
         }
         $rowsByItorero[$id]['insert_icyacumi_recu'] += extractSumFromStored($row['icyacumi'] ?? '');
         $rowsByItorero[$id]['insert_icyacumi_cfms'] += extractSumFromStored($row['icyacumi_cya_cms'] ?? '');
-        $rowsByItorero[$id]['insert_amaturo_recu'] += extractSumFromStored($row['amaturo'] ?? '');
-        $rowsByItorero[$id]['insert_amaturo_cfms'] += extractSumFromStored($row['amaturo_bya_cms'] ?? '');
+        $rowsByItorero[$id]['insert_amaturo_recu'] += extractAmaturoGrossSumFromStored($row['amaturo'] ?? '');
+        $rowsByItorero[$id]['insert_amaturo_cfms'] += extractAmaturoGrossSumFromStored($row['amaturo_bya_cms'] ?? '');
     }
 
     $rows = [];
     foreach ($rowsByItorero as $row) {
         $pastorIcyTotal = (float) $row['pastor_icyacumi_recu'] + (float) $row['pastor_icyacumi_cfms'];
         $insertIcyTotal = (float) $row['insert_icyacumi_recu'] + (float) $row['insert_icyacumi_cfms'];
-        $pastorAmaTotal = (float) $row['pastor_amaturo_recu'] + (float) $row['pastor_amaturo_cfms'];
-        $insertAmaTotal = (float) $row['insert_amaturo_recu'] + (float) $row['insert_amaturo_cfms'];
+        $pastorAmaRecu = (float) $row['pastor_amaturo_recu'];
+        $pastorAmaCfms = (float) $row['pastor_amaturo_cfms'];
+        $insertAmaRecu = (float) $row['insert_amaturo_recu'];
+        $insertAmaCfms = (float) $row['insert_amaturo_cfms'];
+        $pastorAmaTotal = $pastorAmaRecu + $pastorAmaCfms;
+        $insertAmaTotal = $insertAmaRecu + $insertAmaCfms;
+        $pastorAmaHalf = $pastorAmaTotal / 2;
+        $insertAmaHalf = $insertAmaTotal / 2;
         $diffIcy = $insertIcyTotal - $pastorIcyTotal;
-        $diffAma = $insertAmaTotal - $pastorAmaTotal;
+        $diffAma = $insertAmaHalf - $pastorAmaHalf;
         [$icyStatus, $icyLabel] = correctReportStatusFromDiff($diffIcy);
         [$amaStatus, $amaLabel] = correctReportStatusFromDiff($diffAma);
 
@@ -1129,15 +1135,17 @@ function getItoreroOfferingsComparison($pdo, $month, $intara_id = null, $itorero
             'pastor_icyacumi_recu' => (float) $row['pastor_icyacumi_recu'],
             'pastor_icyacumi_cfms' => (float) $row['pastor_icyacumi_cfms'],
             'pastor_icyacumi_total' => $pastorIcyTotal,
-            'pastor_amaturo_recu' => (float) $row['pastor_amaturo_recu'],
-            'pastor_amaturo_cfms' => (float) $row['pastor_amaturo_cfms'],
+            'pastor_amaturo_recu' => $pastorAmaRecu,
+            'pastor_amaturo_cfms' => $pastorAmaCfms,
             'pastor_amaturo_total' => $pastorAmaTotal,
+            'pastor_amaturo_half' => $pastorAmaHalf,
             'insert_icyacumi_recu' => (float) $row['insert_icyacumi_recu'],
             'insert_icyacumi_cfms' => (float) $row['insert_icyacumi_cfms'],
             'insert_icyacumi_total' => $insertIcyTotal,
-            'insert_amaturo_recu' => (float) $row['insert_amaturo_recu'],
-            'insert_amaturo_cfms' => (float) $row['insert_amaturo_cfms'],
+            'insert_amaturo_recu' => $insertAmaRecu,
+            'insert_amaturo_cfms' => $insertAmaCfms,
             'insert_amaturo_total' => $insertAmaTotal,
+            'insert_amaturo_half' => $insertAmaHalf,
             'diff_icyacumi' => $diffIcy,
             'diff_amaturo' => $diffAma,
             'status_icyacumi' => $icyStatus,
@@ -1151,4 +1159,88 @@ function getItoreroOfferingsComparison($pdo, $month, $intara_id = null, $itorero
         return $intaraCmp !== 0 ? $intaraCmp : strcmp((string) $a['itorero_name'], (string) $b['itorero_name']);
     });
     return $rows;
+}
+
+/**
+ * Trans-Funds pivot: grand totals per Intara per month from Mapato ya Pastoro (mapato_pastor).
+ *
+ * @param 'amaturo'|'icyacumi' $category
+ * @return array{
+ *   rows: list<array{intara_id:int,intara_name:string,months:array<int,float>,row_total:float}>,
+ *   month_totals: array<int,float>,
+ *   grand_total: float,
+ *   year: int
+ * }
+ */
+function getTransFundsIntaraMonthPivot($pdo, $category, $year, $restrictIntaraId = null) {
+    require_once __DIR__ . '/includes/imibare-math.php';
+    ensureCorrectReportTables($pdo);
+
+    $yearInt = (int) $year;
+    if ($yearInt < 2000 || $yearInt > 2100) {
+        $yearInt = (int) date('Y');
+    }
+
+    $intaraList = getAllIntara($pdo);
+    $grid = [];
+    foreach ($intaraList as $intara) {
+        $id = (int) $intara['id'];
+        if ($restrictIntaraId !== null && $id !== (int) $restrictIntaraId) {
+            continue;
+        }
+        $grid[$id] = [
+            'intara_id' => $id,
+            'intara_name' => $intara['name'],
+            'months' => array_fill(1, 12, 0.0),
+            'row_total' => 0.0,
+        ];
+    }
+
+    $sql = "SELECT intara_id, month, icyacumi, icyacumi_cya_cms, amaturo, amaturo_bya_cms
+            FROM mapato_pastor
+            WHERE month BETWEEN 1 AND 12
+              AND YEAR(created_at) = ?";
+    $params = [$yearInt];
+    if ($restrictIntaraId !== null) {
+        $sql .= ' AND intara_id = ?';
+        $params[] = (int) $restrictIntaraId;
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    foreach ($stmt->fetchAll() as $row) {
+        $intaraId = (int) ($row['intara_id'] ?? 0);
+        $month = (int) ($row['month'] ?? 0);
+        if ($intaraId < 1 || $month < 1 || $month > 12 || !isset($grid[$intaraId])) {
+            continue;
+        }
+        if ($category === 'icyacumi') {
+            $amount = extractSumFromStored($row['icyacumi'] ?? '')
+                + extractSumFromStored($row['icyacumi_cya_cms'] ?? '');
+        } else {
+            $amount = extractSumFromStored($row['amaturo'] ?? '')
+                + extractSumFromStored($row['amaturo_bya_cms'] ?? '');
+        }
+        $grid[$intaraId]['months'][$month] += $amount;
+        $grid[$intaraId]['row_total'] += $amount;
+    }
+
+    $rows = array_values($grid);
+    usort($rows, fn($a, $b) => strcmp($a['intara_name'], $b['intara_name']));
+
+    $monthTotals = array_fill(1, 12, 0.0);
+    $grandTotal = 0.0;
+    foreach ($rows as $r) {
+        $grandTotal += $r['row_total'];
+        for ($m = 1; $m <= 12; $m++) {
+            $monthTotals[$m] += $r['months'][$m];
+        }
+    }
+
+    return [
+        'rows' => $rows,
+        'month_totals' => $monthTotals,
+        'grand_total' => $grandTotal,
+        'year' => $yearInt,
+    ];
 }

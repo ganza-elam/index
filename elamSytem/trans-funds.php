@@ -111,7 +111,7 @@ for ($y = (int) date('Y'); $y >= (int) date('Y') - 8; $y--) {
         </div>
     </div>
 
-    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
 
     <h2 class="page-title">Trans-Funds</h2>
     <p class="subtitle">

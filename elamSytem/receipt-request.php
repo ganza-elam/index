@@ -118,19 +118,19 @@ if (!$isGuest) {
 
 
 
-    // if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_receipt_itorero_settings'])) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_receipt_itorero_settings'])) {
 
-    //     $itoreroSettingsId = (int) ($_POST['itorero_settings_id'] ?? 0);
+        $itoreroSettingsId = (int) ($_POST['itorero_settings_id'] ?? 0);
 
-    //     $maxBk = (int) ($_POST['receipt_max_booklets'] ?? RECEIPT_DEFAULT_MAX_BOOKLETS);
+        $maxBk = (int) ($_POST['receipt_max_booklets'] ?? RECEIPT_DEFAULT_MAX_BOOKLETS);
 
-    //     $canReq = isset($_POST['receipt_can_request']);
+        $canReq = isset($_POST['receipt_can_request']);
 
-    //     $result = updateItoreroReceiptSettings($pdo, $itoreroSettingsId, $maxBk, $canReq);
+        $result = updateItoreroReceiptSettings($pdo, $itoreroSettingsId, $maxBk, $canReq);
 
-    //     $message = '<div class="alert ' . ($result['success'] ? 'success' : 'error') . '">' . htmlspecialchars($result['message']) . '</div>';
+        $message = '<div class="alert ' . ($result['success'] ? 'success' : 'error') . '">' . htmlspecialchars($result['message']) . '</div>';
 
-    // }
+    }
 
 }
 
@@ -182,13 +182,13 @@ if ($isGuest && getGuestIntaraId() !== null) {
 
     $itoreroList = getItoreroByIntara($pdo, getGuestIntaraId());
 
-    // foreach ($itoreroList as &$itRow) {
+    foreach ($itoreroList as &$itRow) {
 
-    //     $itRow['receipt_quota'] = getItoreroReceiptQuota($pdo, (int) $itRow['id']);
+        $itRow['receipt_quota'] = getItoreroReceiptQuota($pdo, (int) $itRow['id']);
 
-    // }
+    }
 
-    // unset($itRow);
+    unset($itRow);
 
 }
 
@@ -286,7 +286,7 @@ if (!$isGuest) {
 
     $receiptStockList = getReceiptStock($pdo);
 
-    // $itoreroReceiptAdminList = getItoreroListForReceiptAdmin($pdo);
+    $itoreroReceiptAdminList = getItoreroListForReceiptAdmin($pdo);
 
     $guestPastorsList = getGuestPastorsForReceiptAdmin($pdo);
 
@@ -334,7 +334,7 @@ if (!$isGuest) {
 
 
 
-    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
 
     <?= $message ?>
 
@@ -350,7 +350,7 @@ if (!$isGuest) {
 
             Admin aguha receipts nk'urugero rimwe: <strong>0012500 to 0012750</strong> (ntibigabanywa).
 
-            <!-- Buri <strong>Itorero</strong> gifite limit y'ubwayo (urugero 5 booklet) — Itorero kindi ntigikingiwe. -->
+            Buri <strong>Itorero</strong> gifite limit y'ubwayo (urugero 5 booklet) — Itorero kindi ntigikingiwe.
 
             Igaruka ry'ibitabo Admin ayemeza kuri iyi page — reba raporo yawe hepfo.
 
@@ -376,7 +376,7 @@ if (!$isGuest) {
 
                             <option value="">-- Hitamo Itorero --</option>
 
-                            <!-- <?php foreach ($itoreroList as $it):
+                            <?php foreach ($itoreroList as $it):
 
                                 $q = $it['receipt_quota'] ?? getItoreroReceiptQuota($pdo, (int) $it['id']);
 
@@ -400,7 +400,7 @@ if (!$isGuest) {
 
                             ?>
 
-                                <option value="<?= (int) $it['id'] ?>"><?= htmlspecialchars($optLabel) ?></option> -->
+                                <option value="<?= (int) $it['id'] ?>"><?= htmlspecialchars($optLabel) ?></option>
 
                             <?php endforeach; ?>
 
@@ -408,13 +408,13 @@ if (!$isGuest) {
 
                     </div>
 
-                    <!-- <p id="itorero_quota_hint" style="font-size:13px;color:#666;margin-top:8px;"></p> -->
+                    <p id="itorero_quota_hint" style="font-size:13px;color:#666;margin-top:8px;"></p>
 
                     <button type="submit" name="create_request">Ohereza request kuri Admin</button>
 
                 </form>
 
-                <!-- <?php
+                <?php
                 $itoreroQuotasJs = [];
                 foreach ($itoreroList as $it) {
                     $q = $it['receipt_quota'] ?? getItoreroReceiptQuota($pdo, (int) $it['id']);
@@ -473,7 +473,7 @@ if (!$isGuest) {
 
                 })();
 
-                </script> -->
+                </script>
 
             </div>
 
@@ -572,7 +572,7 @@ if (!$isGuest) {
 
             Andika From / To (12500–12750) — system izerekana n'inyuguti z'imbere (0012500).
 
-            Admin ayemeza ko booklet yagarutse — igakurwa mu rutonde rwo hepfo.
+            Admin ayemeza ko booklet yagarutse — iracyaboneka mu rutonde rwa <strong>Pastor yemeje booklet</strong> (status: Yagarutse).
 
         </p>
 
@@ -804,7 +804,7 @@ if (!$isGuest) {
 
             <h3><?= mi('check_circle', 22) ?> Pastor yemeje ko yafashe booklet</h3>
 
-            <p style="font-size:13px;color:#666;margin-bottom:12px;">Iyi list igaragaza pastoro bemeye ko babonye receipt/booklet (Nemeza ko nabonye receipts).</p>
+            <p style="font-size:13px;color:#666;margin-bottom:12px;">Iyi list igaragaza pastoro bemeye ko babonye receipt/booklet. Records zirabikwa n'inyuma y'uko admin yemeje ko booklet yagarutse.</p>
 
             <?php if (empty($acknowledgedReceiptRequests)): ?>
 
@@ -830,6 +830,8 @@ if (!$isGuest) {
 
                             <th>Yemejwe</th>
 
+                            <th>Status</th>
+
                             <th>Requested by</th>
 
                         </tr>
@@ -851,6 +853,17 @@ if (!$isGuest) {
                             <td><strong><?= htmlspecialchars(receiptBookletLabel($ar['range_start'], $ar['range_end'])) ?></strong></td>
 
                             <td style="font-size:12px;"><?= !empty($ar['acknowledged_at']) ? htmlspecialchars(date('d/m/Y H:i', strtotime($ar['acknowledged_at']))) : '—' ?></td>
+
+                            <td style="font-size:12px;">
+                                <?php if (!empty($ar['booklet_returned_at'])): ?>
+                                    <span style="color:#155724;font-weight:600;">Yagarutse</span>
+                                    <br><small><?= htmlspecialchars(date('d/m/Y H:i', strtotime($ar['booklet_returned_at']))) ?></small>
+                                <?php elseif (($ar['status'] ?? '') === 'completed'): ?>
+                                    <span style="color:#155724;font-weight:600;">Yagarutse</span>
+                                <?php else: ?>
+                                    <span style="color:#856404;">Iracyafite</span>
+                                <?php endif; ?>
+                            </td>
 
                             <td style="font-size:12px;">
 

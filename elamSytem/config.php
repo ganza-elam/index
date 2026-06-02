@@ -4,33 +4,14 @@
  * Plain PHP MySQL Connection
  */
 
- function loadEnvFile($path) {
-    if (!is_readable($path)) return;
-    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        $parts = explode('=', $line, 2);
-        if (count($parts) !== 2) continue;
-        $k = trim($parts[0]);
-        $v = trim(trim($parts[1]), "\"'");
-        if ($k !== '' && getenv($k) === false) { putenv("$k=$v"); $_ENV[$k] = $v; }
-    }
-}
-function envValue($key, $default = null) {
-    $v = getenv($key);
-    return ($v === false || $v === '') ? $default : $v;
-}
-loadEnvFile(__DIR__ . '/.env');
-
-$db_host = envValue('DB_HOST', envValue('MYSQLHOST', '127.0.0.1'));
-$db_port = envValue('DB_PORT', envValue('MYSQLPORT', '3306'));
-$db_name = envValue('DB_NAME', envValue('MYSQLDATABASE', 'elam_system'));
-$db_user = envValue('DB_USER', envValue('MYSQLUSER', 'root'));
-$db_pass = envValue('DB_PASS', envValue('MYSQLPASSWORD', ''));
+$db_host = 'localhost';
+$db_name = 'elam_system';
+$db_user = 'root';
+$db_pass = '';
 
 try {
     $pdo = new PDO(
-        "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4",
+        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
         $db_user,
         $db_pass,
         [
@@ -408,6 +389,9 @@ function ensureCorrectReportTables($pdo) {
 
     migrateCorrectReportColumns($pdo);
 
+    require_once __DIR__ . '/includes/mapato-pastor-fields.php';
+    ensureMapatoPastorExtraFieldsSchema($pdo);
+
     $ensured = true;
 }
 
@@ -449,8 +433,8 @@ function saveMapatoPastor($pdo, $data) {
     ensureCorrectReportTables($pdo);
     $stmt = $pdo->prepare("INSERT INTO mapato_pastor (
         intara_id, itorero_id, month, icyacumi, icyacumi_cya_cms, meeting, amaturo, amaturo_bya_cms,
-        revival, ss, filide, umusaruro, ituro, total
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        revival, ss, filide, umusaruro, ituro, mifem, extra_fields, total
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     return $stmt->execute([
         $data['intara_id'],
         $data['itorero_id'] ?? null,
@@ -465,6 +449,8 @@ function saveMapatoPastor($pdo, $data) {
         $data['filide'],
         $data['umusaruro'],
         $data['ituro'],
+        $data['mifem'] ?? null,
+        $data['extra_fields'] ?? null,
         $data['total'],
     ]);
 }
@@ -473,7 +459,7 @@ function updateMapatoPastor($pdo, $id, $data) {
     ensureCorrectReportTables($pdo);
     $stmt = $pdo->prepare("UPDATE mapato_pastor SET
         intara_id = ?, itorero_id = ?, month = ?, icyacumi = ?, icyacumi_cya_cms = ?, meeting = ?, amaturo = ?, amaturo_bya_cms = ?,
-        revival = ?, ss = ?, filide = ?, umusaruro = ?, ituro = ?, total = ?
+        revival = ?, ss = ?, filide = ?, umusaruro = ?, ituro = ?, mifem = ?, extra_fields = ?, total = ?
         WHERE id = ?");
     return $stmt->execute([
         $data['intara_id'],
@@ -489,6 +475,8 @@ function updateMapatoPastor($pdo, $id, $data) {
         $data['filide'],
         $data['umusaruro'],
         $data['ituro'],
+        $data['mifem'] ?? null,
+        $data['extra_fields'] ?? null,
         $data['total'],
         $id,
     ]);

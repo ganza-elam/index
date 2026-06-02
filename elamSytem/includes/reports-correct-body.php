@@ -32,6 +32,11 @@ $crMeetingTotal = $categoryTotals['meeting'] ?? 0;
 </div>
 
 <h3>Category Totals (Mapato ya Pastoro)</h3>
+<?php if ($filter_month === ''): ?>
+<div class="alert" style="background:#fff3cd;padding:12px;border-radius:8px;margin-bottom:16px;color:#856404;">
+    Hitamo <strong>Ukwezi</strong> hejuru, ukande <strong>Search</strong>, kugira ngo urebe Mapato ya Pastoro n'amafaranga yayo.
+</div>
+<?php else: ?>
 <div class="category-summary">
     <div class="cat-item"><div class="label">Icyacumi</div><div class="value"><?= number_format($categoryTotals['icyacumi'], 0) ?></div></div>
     <div class="cat-item"><div class="label">CM (Meeting)</div><div class="value"><?= number_format($crMeetingTotal, 0) ?></div></div>
@@ -40,8 +45,13 @@ $crMeetingTotal = $categoryTotals['meeting'] ?? 0;
     <div class="cat-item"><div class="label">SS Lesson</div><div class="value"><?= number_format($categoryTotals['ss'], 0) ?></div></div>
     <div class="cat-item"><div class="label">Inyubako</div><div class="value"><?= number_format($categoryTotals['filide'], 0) ?></div></div>
     <div class="cat-item"><div class="label">Umusaruro</div><div class="value"><?= number_format($categoryTotals['umusaruro'], 0) ?></div></div>
-    <div class="cat-item"><div class="label">Ituro ry'iteraniro rikuru</div><div class="value"><?= number_format($categoryTotals['ituro'], 0) ?></div></div>
+    <div class="cat-item"><div class="label">Udutabo twa JA</div><div class="value"><?= number_format($categoryTotals['ituro'], 0) ?></div></div>
+    <div class="cat-item"><div class="label">Udutabo twa Mifem</div><div class="value"><?= number_format($categoryTotals['mifem'] ?? 0, 0) ?></div></div>
+    <?php foreach ($pastorExtraColumns as $col): ?>
+    <div class="cat-item"><div class="label"><?= htmlspecialchars($col['label']) ?></div><div class="value"><?= number_format($pastorExtraTotals[$col['slug']] ?? 0, 0) ?></div></div>
+    <?php endforeach; ?>
 </div>
+<?php endif; ?>
 </div>
 
 <div class="nav-page-section" data-nav-section="comparison-pastor-bank" id="comparison-pastor-bank">
@@ -348,7 +358,11 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
 
 <div class="nav-page-section" data-nav-section="mapato-pastor-table" id="mapato-pastor-table">
 <h3><?= mi('table_chart', 22) ?> Mapato from the Pastor</h3>
-<?php if (empty($mapatoPastorList)): ?>
+<?php if ($filter_month === ''): ?>
+    <div class="no-data">
+        <p><?= mi('event', 32) ?> Hitamo <strong>Ukwezi</strong> hejuru, ukande <strong>Search</strong>, kugira ngo urebe Mapato ya Pastoro.</p>
+    </div>
+<?php elseif (empty($mapatoPastorList)): ?>
     <div class="no-data">
         <p><?= mi('inbox', 32) ?> Nta mapato ya pastoro ihari</p>
         <p><a href="correct-report.php?section=pastor">Ongeraho mapato ya pastoro</a></p>
@@ -370,7 +384,11 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
                 <th>SS Lesson</th>
                 <th>Inyubako</th>
                 <th>Umusaruro</th>
-                <th>Ituro Rikuru</th>
+                <th>Udutabo twa JA</th>
+                <th>Udutabo twa Mifem</th>
+                <?php foreach ($pastorExtraColumns as $col): ?>
+                <th><?= htmlspecialchars($col['label']) ?></th>
+                <?php endforeach; ?>
                 <th>Total</th>
                 <th>Itariki</th>
                 <?php if (!$isGuest): ?><th>Actions</th><?php endif; ?>
@@ -397,6 +415,10 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
                 <td><?= htmlspecialchars($record['filide'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['umusaruro'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['ituro'] ?? '0') ?></td>
+                <td><?= htmlspecialchars($record['mifem'] ?? '0') ?></td>
+                <?php foreach ($pastorExtraColumns as $col): ?>
+                <td><?= mapatoPastorExtraFieldDisplay($record, $col['slug']) ?></td>
+                <?php endforeach; ?>
                 <td><strong><?= number_format($record['total'], 0) ?></strong></td>
                 <td class="date"><?php
                     $tz = new DateTimeZone('Africa/Kigali');
@@ -429,6 +451,10 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
                 <td><?= number_format($categoryTotals['filide'], 0) ?></td>
                 <td><?= number_format($categoryTotals['umusaruro'], 0) ?></td>
                 <td><?= number_format($categoryTotals['ituro'], 0) ?></td>
+                <td><?= number_format($categoryTotals['mifem'] ?? 0, 0) ?></td>
+                <?php foreach ($pastorExtraColumns as $col): ?>
+                <td><?= number_format($pastorExtraTotals[$col['slug']] ?? 0, 0) ?></td>
+                <?php endforeach; ?>
                 <td><?= number_format($grandTotal, 0) ?></td>
                 <td></td>
                 <?php if (!$isGuest): ?><td></td><?php endif; ?>

@@ -2,6 +2,7 @@
 require_once 'config.php';
 require_once 'auth.php';
 require_once __DIR__ . '/includes/icons.php';
+require_once __DIR__ . '/includes/mapato-pastor-fields.php';
 
 define('REPORTS_PER_PAGE', 15);
 
@@ -152,7 +153,9 @@ if ($isGuest && $guestIntaraId === null) {
         : [];
 } elseif ($reportType === 'correct_report') {
     $imibareList = [];
-    $mapatoPastorList = getMapatoPastor($pdo, $filter_intara ?: null, $filter_month !== '' ? $filter_month : null, $filter_itorero ?: null);
+    $mapatoPastorList = $filter_month !== ''
+        ? getMapatoPastor($pdo, $filter_intara ?: null, (int) $filter_month, $filter_itorero ?: null)
+        : [];
     $bankSlipsList = getBankSlips($pdo, $filter_intara ?: null, $filter_month !== '' ? $filter_month : null);
     $comparisonRows = $filter_month !== ''
         ? getCorrectReportComparison($pdo, $filter_month, $filter_intara ?: null)
@@ -234,6 +237,7 @@ $categoryTotals = [
     'total_amaturo_pair' => 0,
     'umusaruro' => 0, 'ituro' => 0, 'filide' => 0, 'ss' => 0, 'ubusonga' => 0, 'mifem' => 0, 'ja' => 0,
     'revival' => 0,
+    'mifem' => 0,
 ];
 
 if ($reportType === 'correct_report') {
@@ -253,6 +257,7 @@ if ($reportType === 'correct_report') {
         $categoryTotals['filide'] += extractSum($record['filide']);
         $categoryTotals['umusaruro'] += extractSum($record['umusaruro']);
         $categoryTotals['ituro'] += extractSum($record['ituro']);
+        $categoryTotals['mifem'] += extractSum($record['mifem'] ?? '');
     }
     foreach ($bankSlipsList as $slip) {
         $bankSlipsTotal += (float) $slip['amount'];
@@ -278,6 +283,23 @@ if ($reportType === 'correct_report') {
         $categoryTotals['ja'] += extractSum($record['ja']);
     }
     $totalRecords = count($imibareList);
+}
+
+$pastorExtraColumns = [];
+$pastorExtraTotals = [];
+if (in_array($reportType, ['correct_report', 'comparison_summary'], true) && !empty($mapatoPastorList)) {
+    $pastorExtraColumns = collectMapatoPastorExtraColumns($pdo, $mapatoPastorList);
+    foreach ($pastorExtraColumns as $col) {
+        $pastorExtraTotals[$col['slug']] = 0.0;
+    }
+    foreach ($mapatoPastorList as $record) {
+        foreach (decodeMapatoPastorExtraFields($record) as $slug => $stored) {
+            if (!isset($pastorExtraTotals[$slug])) {
+                $pastorExtraTotals[$slug] = 0.0;
+            }
+            $pastorExtraTotals[$slug] += extractSum($stored);
+        }
+    }
 }
 
 $perPage = (int) REPORTS_PER_PAGE;
@@ -338,7 +360,7 @@ if ($isGuest && $guestIntaraId !== null) {
         </div>
     </div>
     
-    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <?php if ($reportType === 'insert_data'): ?>

@@ -2,6 +2,7 @@
 require_once 'config.php';
 require_once 'auth.php';
 require_once __DIR__ . '/includes/imibare-math.php';
+require_once __DIR__ . '/includes/mapato-pastor-fields.php';
 
 requireAdmin();
 
@@ -26,10 +27,7 @@ if (isset($_GET['change_bank_context'])) {
 $bankSessionIntaraId = isset($_SESSION['cr_bank_intara_id']) ? (string) $_SESSION['cr_bank_intara_id'] : '';
 $bankSessionMonth = isset($_SESSION['cr_bank_month']) ? (int) $_SESSION['cr_bank_month'] : 0;
 
-$pastorFieldKeys = [
-    'icyacumi', 'icyacumi_cya_cms', 'meeting', 'amaturo', 'amaturo_bya_cms',
-    'revival', 'ss', 'filide', 'umusaruro', 'ituro',
-];
+$pastorFieldKeys = mapatoPastorStaticFieldKeys();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_bank_context'])) {
     $intara_id = $_POST['bank_intara_id'] ?? '';
@@ -82,16 +80,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_pastor_mapato'])
                 $message = '<div class="alert error">Imirongo y\'amafaranga igomba guhura n\'umubare w\'Amatorero (' . $n . '). Reba: <strong>' . htmlspecialchars($alignError) . '</strong></div>';
                 $activeSection = 'pastor';
             } else {
+                $extraLabelBySlug = [];
+                $extraDefsRaw = json_decode($_POST['extra_field_defs_json'] ?? '[]', true);
+                if (is_array($extraDefsRaw)) {
+                    foreach ($extraDefsRaw as $def) {
+                        $slug = trim((string) ($def['slug'] ?? ''));
+                        $label = trim((string) ($def['label'] ?? ''));
+                        if ($slug !== '' && $label !== '') {
+                            $extraLabelBySlug[$slug] = $label;
+                        }
+                    }
+                }
+                syncMapatoPastorFieldDefs($pdo, (int) $intara_id, $month_val, $extraLabelBySlug);
+
+                $extraSlugs = array_keys($extraLabelBySlug);
+                $extraSegmentsBySlug = [];
+                $extraAlignError = null;
+                $extraPost = is_array($_POST['extra_field'] ?? null) ? $_POST['extra_field'] : [];
+                foreach ($extraSlugs as $slug) {
+                    $extraSegmentsBySlug[$slug] = alignCommaFieldSegments($extraPost[$slug] ?? '', $n);
+                    if ($extraSegmentsBySlug[$slug] === null) {
+                        $extraAlignError = $extraLabelBySlug[$slug] ?? $slug;
+                        break;
+                    }
+                }
+                if ($extraAlignError !== null) {
+                    $message = '<div class="alert error">Imirongo y\'inzego nshya igomba guhura n\'umubare w\'Amatorero (' . $n . '). Reba: <strong>' . htmlspecialchars($extraAlignError) . '</strong></div>';
+                    $activeSection = 'pastor';
+                } else {
                 $savedCount = 0;
                 foreach ($resolvedItorero as $idx => $it) {
                     $seg = [];
                     foreach ($pastorFieldKeys as $fieldKey) {
                         $seg[$fieldKey] = $segmentsByField[$fieldKey][$idx];
                     }
-                    $total = sumValues($seg['icyacumi']) + sumValues($seg['icyacumi_cya_cms']) + sumValues($seg['meeting'])
-                        + sumValues($seg['amaturo']) + sumValues($seg['amaturo_bya_cms'])
-                        + sumValues($seg['revival']) + sumValues($seg['ss']) + sumValues($seg['filide'])
-                        + sumValues($seg['umusaruro']) + sumValues($seg['ituro']);
+                    $extraSegValues = [];
+                    $extraStored = [];
+                    foreach ($extraSlugs as $slug) {
+                        $extraSegValues[] = $extraSegmentsBySlug[$slug][$idx];
+                        $extraStored[$slug] = formatStoredValue($extraSegmentsBySlug[$slug][$idx]);
+                    }
+                    $total = sumMapatoPastorRecordTotal($seg, $extraSegValues);
                     $data = [
                         'intara_id' => $intara_id,
                         'itorero_id' => $it['id'],
@@ -106,6 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_pastor_mapato'])
                         'filide' => formatStoredValue($seg['filide']),
                         'umusaruro' => formatStoredValue($seg['umusaruro']),
                         'ituro' => formatStoredValue($seg['ituro']),
+                        'mifem' => formatStoredValue($seg['mifem']),
+                        'extra_fields' => encodeMapatoPastorExtraFields($extraStored),
                         'total' => $total,
                     ];
                     if (saveMapatoPastor($pdo, $data)) {
@@ -120,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_pastor_mapato'])
                     $message = '<div class="alert error">Habaye ikibazo mu kubika mapato ya pastoro.</div>';
                 }
                 $activeSection = 'pastor';
+                }
             }
         }
     }
@@ -209,6 +241,38 @@ $bankContextReady = $bankSessionIntaraId !== '' && $bankSessionMonth >= 1 && $ba
         .cr-tabs a.active { background: #1976d2; color: #fff; }
         .cr-section { display: none; }
         .cr-section.active { display: block; }
+        .cr-extra-fields-zone {
+            grid-column: 1 / -1;
+            border: 2px dashed #90caf9;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 8px;
+            background: #f8fbff;
+        }
+        .cr-extra-fields-zone h4 { margin: 0 0 12px; font-size: 1rem; color: #1565c0; }
+        .cr-add-field-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+            margin-bottom: 16px;
+        }
+        .cr-add-field-row input[type="text"] { flex: 1; min-width: 160px; }
+        .cr-add-field-row .cr-add-value { max-width: 180px; }
+        #cr_extra_fields_container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px 24px;
+        }
+        .cr-grand-total-bar {
+            text-align: center;
+            margin-top: 16px;
+            padding: 14px;
+            background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+            border-radius: 10px;
+        }
+        .cr-grand-total-bar b { font-size: 1.15rem; }
+        #p_grand { color: #1976d2; font-size: 1.35rem; }
     </style>
 </head>
 <body class="app-body" data-skip-page-sections="1">
@@ -222,7 +286,7 @@ $bankContextReady = $bankSessionIntaraId !== '' && $bankSessionMonth >= 1 && $ba
         </div>
     </div>
 
-    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <h2 class="page-title">IBYAKIRIWE KURI RAPORT</h2>
@@ -253,7 +317,7 @@ $bankContextReady = $bankSessionIntaraId !== '' && $bankSessionMonth >= 1 && $ba
                 </div>
                 <div class="form-group">
                     <label>Ukwezi:</label>
-                    <select name="month" required>
+                    <select name="month" id="cr_month" required>
                         <option value="">-- Hitamo ukwezi --</option>
                         <?php foreach ($monthOptions as $m => $label): ?>
                             <option value="<?= (int) $m ?>"><?= htmlspecialchars($label) ?></option>
@@ -262,7 +326,7 @@ $bankContextReady = $bankSessionIntaraId !== '' && $bankSessionMonth >= 1 && $ba
                 </div>
 
                 <div class="form-group">
-                    <label>Icyacumi (Lesi):</label>
+                    <label>Icyacumi (Grand Total):</label>
                     <div class="input-row">
                         <input type="text" id="icyacumi" name="icyacumi" placeholder="Urugero: 1000, 2000, 1500 (buri namba ku Itorero)" oninput="calcPastor()">
                         <span class="sum">= <span id="p_s1">0</span></span>
@@ -283,7 +347,7 @@ $bankContextReady = $bankSessionIntaraId !== '' && $bankSessionMonth >= 1 && $ba
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Amaturo (Lesi):</label>
+                    <label>Amaturo (Grand Total):</label>
                     <div class="input-row">
                         <input type="text" id="amaturo" name="amaturo" placeholder="Urugero: 5000, 3000 (RECU — buri Itorero)" oninput="calcPastor()">
                         <span class="sum">= <span id="p_s2">0</span></span>
@@ -325,16 +389,40 @@ $bankContextReady = $bankSessionIntaraId !== '' && $bankSessionMonth >= 1 && $ba
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Ituro ry'iteraniro rikuru:</label>
+                    <label>Udutabo twa JA:</label>
                     <div class="input-row">
                         <input type="text" id="ituro" name="ituro" placeholder="Urugero: 1000+2000" oninput="calcPastor()">
                         <span class="sum">= <span id="p_s4">0</span></span>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label>Udutabo twa Mifem:</label>
+                    <div class="input-row">
+                        <input type="text" id="mifem" name="mifem" placeholder="Urugero: 1000+2000" oninput="calcPastor()">
+                        <span class="sum">= <span id="p_s_mifem">0</span></span>
+                    </div>
+                </div>
+
+                <div class="cr-extra-fields-zone">
+                    <h4>+ Ongeraho inzego nshya (add new field)</h4>
+                    <div class="cr-add-field-row">
+                        <div class="form-group" style="margin:0;flex:1;">
+                            <label>Izina ry'inzego nshya (field name):</label>
+                            <input type="text" id="cr_new_field_label" placeholder="Urugero: Udutabo twa SS">
+                        </div>
+                        <div class="form-group cr-add-value" style="margin:0;">
+                            <label>Value (optional):</label>
+                            <input type="text" id="cr_new_field_value" placeholder="1000+2000">
+                        </div>
+                        <button type="button" class="btn-icon" id="cr_add_extra_field_btn" style="margin-bottom:2px;">+ Ongeraho</button>
+                    </div>
+                    <div id="cr_extra_fields_container"></div>
+                </div>
+                <input type="hidden" name="extra_field_defs_json" id="extra_field_defs_json" value="[]">
             </div>
-            <div style="text-align: center; margin-top: 12px;">
-                <p><b>Grand Total: <span id="p_grand">0</span></b></p>
-                <button type="submit" name="save_pastor_mapato">💾 SAVE Mapato ya Pastoro</button>
+            <div class="cr-grand-total-bar">
+                <p style="margin:0;"><b>Grand Total: <span id="p_grand">0</span></b></p>
+                <button type="submit" name="save_pastor_mapato" style="margin-top:12px;">💾 SAVE Mapato ya Pastoro</button>
             </div>
         </form>
     </div>
@@ -415,6 +503,7 @@ function calcPastor() {
     const fil = sumValues(document.getElementById('filide').value);
     const umu = sumValues(document.getElementById('umusaruro').value);
     const itu = sumValues(document.getElementById('ituro').value);
+    const mif = sumValues(document.getElementById('mifem').value);
 
     document.getElementById('p_s1').innerText = icy;
     document.getElementById('p_s1_cfms').innerText = icyCfms;
@@ -426,6 +515,11 @@ function calcPastor() {
     document.getElementById('p_s5').innerText = fil;
     document.getElementById('p_s3').innerText = umu;
     document.getElementById('p_s4').innerText = itu;
+    document.getElementById('p_s_mifem').innerText = mif;
+    document.querySelectorAll('.cr-extra-sum').forEach(function (el) {
+        const input = document.getElementById(el.dataset.for);
+        el.innerText = input ? sumValues(input.value) : 0;
+    });
     calcPastorGrand();
 }
 
@@ -465,7 +559,7 @@ function sumPastorSegment(val) {
 
 function calcPastorGrand() {
     const n = Math.max(1, (document.getElementById('cr_itorero_names').value || '').split(',').filter(s => s.trim() !== '').length);
-    const fieldIds = ['icyacumi', 'icyacumi_cya_cms', 'meeting', 'amaturo', 'amaturo_bya_cms', 'revival', 'ss', 'filide', 'umusaruro', 'ituro'];
+    const fieldIds = ['icyacumi', 'icyacumi_cya_cms', 'meeting', 'amaturo', 'amaturo_bya_cms', 'revival', 'ss', 'filide', 'umusaruro', 'ituro', 'mifem'];
     let grand = 0;
     fieldIds.forEach(function (id) {
         const raw = document.getElementById(id).value || '';
@@ -474,8 +568,107 @@ function calcPastorGrand() {
         const use = parts.length === 1 && n > 1 ? Array(n).fill(parts[0]) : parts;
         use.forEach(function (seg) { grand += sumPastorSegment(seg); });
     });
+    document.querySelectorAll('.cr-extra-field-input').forEach(function (input) {
+        const raw = input.value || '';
+        const parts = raw.split(',').map(s => s.trim()).filter(s => s !== '');
+        if (parts.length === 0) return;
+        const use = parts.length === 1 && n > 1 ? Array(n).fill(parts[0]) : parts;
+        use.forEach(function (seg) { grand += sumPastorSegment(seg); });
+    });
     document.getElementById('p_grand').innerText = grand;
 }
+
+let crExtraFieldDefs = [];
+
+function fieldSlugFromLabel(label) {
+    let slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    if (!slug) slug = 'field_' + Date.now();
+    return slug.substring(0, 80);
+}
+
+function syncExtraFieldDefsHidden() {
+    document.getElementById('extra_field_defs_json').value = JSON.stringify(crExtraFieldDefs);
+}
+
+function renderExtraFieldInput(def, presetValue) {
+    const container = document.getElementById('cr_extra_fields_container');
+    if (document.getElementById('extra_field_' + def.slug)) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'form-group cr-extra-field-wrap';
+    wrap.dataset.slug = def.slug;
+    wrap.innerHTML =
+        '<label>' + def.label.replace(/</g, '&lt;') + ':</label>' +
+        '<div class="input-row">' +
+        '<input type="text" class="cr-extra-field-input" id="extra_field_' + def.slug + '" name="extra_field[' + def.slug + ']" placeholder="Urugero: 1000+2000" oninput="calcPastor()">' +
+        '<span class="sum">= <span class="cr-extra-sum" data-for="extra_field_' + def.slug + '">0</span></span>' +
+        '</div>';
+    container.appendChild(wrap);
+    if (presetValue) {
+        document.getElementById('extra_field_' + def.slug).value = presetValue;
+    }
+}
+
+function addExtraField(label, presetValue) {
+    label = (label || '').trim();
+    if (!label) return;
+    let slug = fieldSlugFromLabel(label);
+    let base = slug;
+    let i = 2;
+    while (crExtraFieldDefs.some(function (d) { return d.slug === slug; })) {
+        slug = base + '_' + i;
+        i++;
+    }
+    const def = { slug: slug, label: label };
+    crExtraFieldDefs.push(def);
+    syncExtraFieldDefsHidden();
+    renderExtraFieldInput(def, presetValue || '');
+    calcPastor();
+}
+
+function loadExtraFieldsForPeriod() {
+    const intaraId = document.getElementById('cr_intara_id').value;
+    const month = document.getElementById('cr_month').value;
+    crExtraFieldDefs = [];
+    document.getElementById('cr_extra_fields_container').innerHTML = '';
+    syncExtraFieldDefsHidden();
+    if (!intaraId || !month) return;
+
+    fetch('get_mapato_pastor_fields.php?intara_id=' + encodeURIComponent(intaraId) + '&month=' + encodeURIComponent(month))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            (data.fields || []).forEach(function (f) {
+                crExtraFieldDefs.push({ slug: f.field_slug, label: f.field_label });
+                renderExtraFieldInput({ slug: f.field_slug, label: f.field_label }, '');
+            });
+            syncExtraFieldDefsHidden();
+            calcPastor();
+        })
+        .catch(function () {});
+}
+
+const crMonthSelect = document.getElementById('cr_month');
+if (crIntaraSelect) {
+    crIntaraSelect.addEventListener('change', function () {
+        updateItoreroHint();
+        loadExtraFieldsForPeriod();
+    });
+}
+if (crMonthSelect) {
+    crMonthSelect.addEventListener('change', loadExtraFieldsForPeriod);
+}
+
+const crAddBtn = document.getElementById('cr_add_extra_field_btn');
+if (crAddBtn) {
+    crAddBtn.addEventListener('click', function () {
+        const label = document.getElementById('cr_new_field_label').value;
+        const val = document.getElementById('cr_new_field_value').value;
+        addExtraField(label, val);
+        document.getElementById('cr_new_field_label').value = '';
+        document.getElementById('cr_new_field_value').value = '';
+    });
+}
+loadExtraFieldsForPeriod();
 </script>
 <?php require __DIR__ . '/includes/layout-end.php'; ?>
 </body>

@@ -91,97 +91,97 @@ function ensureReceiptRequestAdminColumns($pdo) {
 }
 
 define('RECEIPT_BOOKLETS_PER_PAGE', 15);
-// define('RECEIPT_DEFAULT_MAX_BOOKLETS', 5);
+define('RECEIPT_DEFAULT_MAX_BOOKLETS', 5);
 
-// function ensureReceiptItoreroColumns($pdo) {
-//     static $done = false;
-//     if ($done) {
-//         return;
-//     }
-//     $cols = $pdo->query("SHOW COLUMNS FROM itorero")->fetchAll(PDO::FETCH_COLUMN);
-//     if (!in_array('receipt_max_booklets', $cols, true)) {
-//         $pdo->exec("ALTER TABLE itorero ADD COLUMN receipt_max_booklets int(11) NOT NULL DEFAULT " . (int) RECEIPT_DEFAULT_MAX_BOOKLETS);
-//         $cols[] = 'receipt_max_booklets';
-//     }
-//     if (!in_array('receipt_can_request', $cols, true)) {
-//         $after = in_array('receipt_max_booklets', $cols, true) ? 'receipt_max_booklets' : 'name';
-//         $pdo->exec("ALTER TABLE itorero ADD COLUMN receipt_can_request tinyint(1) NOT NULL DEFAULT 1 AFTER {$after}");
-//     }
-//     $done = true;
-// }
+function ensureReceiptItoreroColumns($pdo) {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $cols = $pdo->query("SHOW COLUMNS FROM itorero")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('receipt_max_booklets', $cols, true)) {
+        $pdo->exec("ALTER TABLE itorero ADD COLUMN receipt_max_booklets int(11) NOT NULL DEFAULT " . (int) RECEIPT_DEFAULT_MAX_BOOKLETS);
+        $cols[] = 'receipt_max_booklets';
+    }
+    if (!in_array('receipt_can_request', $cols, true)) {
+        $after = in_array('receipt_max_booklets', $cols, true) ? 'receipt_max_booklets' : 'name';
+        $pdo->exec("ALTER TABLE itorero ADD COLUMN receipt_can_request tinyint(1) NOT NULL DEFAULT 1 AFTER {$after}");
+    }
+    $done = true;
+}
 
-// /** Active booklet slots for one Itorero (any pastor): pending or not yet returned. */
-// function countItoreroActiveReceiptSlots($pdo, $itoreroId) {
-//     ensureReceiptTables($pdo);
-//     $stmt = $pdo->prepare("SELECT id, status FROM receipt_requests
-//         WHERE itorero_id = ? AND status IN ('pending','assigned','acknowledged')");
-//     $stmt->execute([(int) $itoreroId]);
-//     $count = 0;
-//     foreach ($stmt->fetchAll() as $row) {
-//         if ($row['status'] === 'pending') {
-//             $count++;
-//             continue;
-//         }
-//         $st = getReceiptReturnStatus($pdo, (int) $row['id']);
-//         if (!$st['all_returned']) {
-//             $count++;
-//         }
-//     }
-//     return $count;
-// }
+/** Active booklet slots for one Itorero (any pastor): pending or not yet returned. */
+function countItoreroActiveReceiptSlots($pdo, $itoreroId) {
+    ensureReceiptTables($pdo);
+    $stmt = $pdo->prepare("SELECT id, status FROM receipt_requests
+        WHERE itorero_id = ? AND status IN ('pending','assigned','acknowledged')");
+    $stmt->execute([(int) $itoreroId]);
+    $count = 0;
+    foreach ($stmt->fetchAll() as $row) {
+        if ($row['status'] === 'pending') {
+            $count++;
+            continue;
+        }
+        $st = getReceiptReturnStatus($pdo, (int) $row['id']);
+        if (!$st['all_returned']) {
+            $count++;
+        }
+    }
+    return $count;
+}
 
-// function getItoreroReceiptQuota($pdo, $itoreroId) {
-//     ensureReceiptItoreroColumns($pdo);
-//     $stmt = $pdo->prepare("SELECT receipt_max_booklets, receipt_can_request FROM itorero WHERE id = ?");
-//     $stmt->execute([(int) $itoreroId]);
-//     $row = $stmt->fetch();
-//     $max = max(1, (int) ($row['receipt_max_booklets'] ?? RECEIPT_DEFAULT_MAX_BOOKLETS));
-//     $canRequest = $row ? (bool) $row['receipt_can_request'] : true;
-//     $used = countItoreroActiveReceiptSlots($pdo, $itoreroId);
-//     $available = max(0, $max - $used);
-//     return [
-//         'itorero_id' => (int) $itoreroId,
-//         'max_booklets' => $max,
-//         'can_request' => $canRequest,
-//         'used_slots' => $used,
-//         'available_slots' => $available,
-//         'can_create' => $canRequest && $used < $max,
-//     ];
-// }
+function getItoreroReceiptQuota($pdo, $itoreroId) {
+    ensureReceiptItoreroColumns($pdo);
+    $stmt = $pdo->prepare("SELECT receipt_max_booklets, receipt_can_request FROM itorero WHERE id = ?");
+    $stmt->execute([(int) $itoreroId]);
+    $row = $stmt->fetch();
+    $max = max(1, (int) ($row['receipt_max_booklets'] ?? RECEIPT_DEFAULT_MAX_BOOKLETS));
+    $canRequest = $row ? (bool) $row['receipt_can_request'] : true;
+    $used = countItoreroActiveReceiptSlots($pdo, $itoreroId);
+    $available = max(0, $max - $used);
+    return [
+        'itorero_id' => (int) $itoreroId,
+        'max_booklets' => $max,
+        'can_request' => $canRequest,
+        'used_slots' => $used,
+        'available_slots' => $available,
+        'can_create' => $canRequest && $used < $max,
+    ];
+}
 
-// function updateItoreroReceiptSettings($pdo, $itoreroId, $maxBooklets, $canRequest) {
-//     ensureReceiptItoreroColumns($pdo);
-//     $stmt = $pdo->prepare("SELECT id FROM itorero WHERE id = ?");
-//     $stmt->execute([(int) $itoreroId]);
-//     if (!$stmt->fetch()) {
-//         return ['success' => false, 'message' => 'Itorero ntiribaho.'];
-//     }
-//     $maxBooklets = max(1, min(50, (int) $maxBooklets));
-//     $canRequest = $canRequest ? 1 : 0;
-//     $upd = $pdo->prepare("UPDATE itorero SET receipt_max_booklets = ?, receipt_can_request = ? WHERE id = ?");
-//     if ($upd->execute([$maxBooklets, $canRequest, (int) $itoreroId])) {
-//         return ['success' => true, 'message' => 'Igenamiterere ry\'Itorero ryabitswe neza.'];
-//     }
-//     return ['success' => false, 'message' => 'Ntibyashoboye kubika igenamiterere.'];
-// }
+function updateItoreroReceiptSettings($pdo, $itoreroId, $maxBooklets, $canRequest) {
+    ensureReceiptItoreroColumns($pdo);
+    $stmt = $pdo->prepare("SELECT id FROM itorero WHERE id = ?");
+    $stmt->execute([(int) $itoreroId]);
+    if (!$stmt->fetch()) {
+        return ['success' => false, 'message' => 'Itorero ntiribaho.'];
+    }
+    $maxBooklets = max(1, min(50, (int) $maxBooklets));
+    $canRequest = $canRequest ? 1 : 0;
+    $upd = $pdo->prepare("UPDATE itorero SET receipt_max_booklets = ?, receipt_can_request = ? WHERE id = ?");
+    if ($upd->execute([$maxBooklets, $canRequest, (int) $itoreroId])) {
+        return ['success' => true, 'message' => 'Igenamiterere ry\'Itorero ryabitswe neza.'];
+    }
+    return ['success' => false, 'message' => 'Ntibyashoboye kubika igenamiterere.'];
+}
 
-// function getItoreroListForReceiptAdmin($pdo) {
-//     ensureReceiptItoreroColumns($pdo);
-//     $stmt = $pdo->query("SELECT it.id, it.name AS itorero_name, it.receipt_max_booklets, it.receipt_can_request,
-//             i.name AS intara_name
-//         FROM itorero it
-//         JOIN intara i ON it.intara_id = i.id
-//         ORDER BY i.name ASC, it.name ASC");
-//     $rows = [];
-//     foreach ($stmt->fetchAll() as $row) {
-//         $quota = getItoreroReceiptQuota($pdo, (int) $row['id']);
-//         $rows[] = array_merge($row, [
-//             'used_slots' => $quota['used_slots'],
-//             'available_slots' => $quota['available_slots'],
-//         ]);
-//     }
-//     return $rows;
-// }
+function getItoreroListForReceiptAdmin($pdo) {
+    ensureReceiptItoreroColumns($pdo);
+    $stmt = $pdo->query("SELECT it.id, it.name AS itorero_name, it.receipt_max_booklets, it.receipt_can_request,
+            i.name AS intara_name
+        FROM itorero it
+        JOIN intara i ON it.intara_id = i.id
+        ORDER BY i.name ASC, it.name ASC");
+    $rows = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $quota = getItoreroReceiptQuota($pdo, (int) $row['id']);
+        $rows[] = array_merge($row, [
+            'used_slots' => $quota['used_slots'],
+            'available_slots' => $quota['available_slots'],
+        ]);
+    }
+    return $rows;
+}
 
 /** Minimum digit width when showing receipt numbers (e.g. 12500 → 0012500). */
 define('RECEIPT_NUM_MIN_WIDTH', 7);
@@ -318,24 +318,24 @@ function createReceiptRequest($pdo, $userId, $itoreroId, $requestedByAdminId = n
         return ['success' => false, 'message' => 'Ntabwo wemerewe gukoresha iri Torero.'];
     }
 
-    // $quota = getItoreroReceiptQuota($pdo, $itoreroId);
-    // if (!$quota['can_request']) {
-    //     return ['success' => false, 'message' => 'Admin yaguze gusaba receipts kuri iri Torero. Saba admin.'];
-    // }
-    // if (!$quota['can_create']) {
-    //     return [
-    //         'success' => false,
-    //         'message' => 'Iri Torero rifite booklet ' . $quota['max_booklets'] . ' zose zikoreshwa (' . $quota['used_slots'] . '/' . $quota['max_booklets'] . '). Garura imwe mbere cyangwa hitamo Itorero kindi.',
-    //     ];
-    // }
+    $quota = getItoreroReceiptQuota($pdo, $itoreroId);
+    if (!$quota['can_request']) {
+        return ['success' => false, 'message' => 'Admin yaguze gusaba receipts kuri iri Torero. Saba admin.'];
+    }
+    if (!$quota['can_create']) {
+        return [
+            'success' => false,
+            'message' => 'Iri Torero rifite booklet ' . $quota['max_booklets'] . ' zose zikoreshwa (' . $quota['used_slots'] . '/' . $quota['max_booklets'] . '). Garura imwe mbere cyangwa hitamo Itorero kindi.',
+        ];
+    }
 
     $stmt = $pdo->prepare("INSERT INTO receipt_requests (user_id, requested_by_admin_id, itorero_id, status) VALUES (?, ?, ?, 'pending')");
     if ($stmt->execute([(int) $userId, $requestedByAdminId, (int) $itoreroId])) {
-        // $q = getItoreroReceiptQuota($pdo, $itoreroId);
+        $q = getItoreroReceiptQuota($pdo, $itoreroId);
         $prefix = $requestedByAdminId ? 'Request yoherejwe ku izina rya pastoro. ' : '';
         return [
             'success' => true,
-            // 'message' => $prefix . 'Request yoherejwe neza kuri iri Torero. Booklets: ' . $q['used_slots'] . '/' . $q['max_booklets'] . ' (bisigaye: ' . $q['available_slots'] . ').',
+            'message' => $prefix . 'Request yoherejwe neza kuri iri Torero. Booklets: ' . $q['used_slots'] . '/' . $q['max_booklets'] . ' (bisigaye: ' . $q['available_slots'] . ').',
         ];
     }
     return ['success' => false, 'message' => 'Habaye ikibazo mu kohereza request.'];
@@ -485,17 +485,18 @@ function getActiveReceiptRequests($pdo) {
         ORDER BY rr.assigned_at DESC")->fetchAll();
 }
 
-/** Pastor confirmed receipt received (visible to admin). */
+/** Pastor confirmed receipt received — kept in list after admin confirms return. */
 function getAcknowledgedReceiptRequests($pdo) {
     ensureReceiptTables($pdo);
     return $pdo->query("SELECT rr.*, u.username, it.name AS itorero_name, i.name AS intara_name,
-            admin_u.username AS requested_by_admin_name
+            admin_u.username AS requested_by_admin_name,
+            (SELECT MAX(rb.returned_at) FROM receipt_booklets rb WHERE rb.request_id = rr.id) AS booklet_returned_at
         FROM receipt_requests rr
         JOIN users u ON rr.user_id = u.id
         JOIN itorero it ON rr.itorero_id = it.id
         JOIN intara i ON it.intara_id = i.id
         LEFT JOIN users admin_u ON rr.requested_by_admin_id = admin_u.id
-        WHERE rr.status = 'acknowledged'
+        WHERE rr.acknowledged_at IS NOT NULL
         ORDER BY rr.acknowledged_at DESC")->fetchAll();
 }
 

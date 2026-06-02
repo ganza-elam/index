@@ -235,29 +235,22 @@ $categoryTotals = [
     'ibindi' => 0,
     'icyacumi' => 0, 'icyacumi_cya_cms' => 0, 'total_icyacumi_pair' => 0, 'amaturo' => 0, 'amaturo_bya_cms' => 0,
     'total_amaturo_pair' => 0,
+    'total_amaturo_half' => 0,
     'umusaruro' => 0, 'ituro' => 0, 'filide' => 0, 'ss' => 0, 'ubusonga' => 0, 'mifem' => 0, 'ja' => 0,
     'revival' => 0,
-    'mifem' => 0,
+    // 'mifem' already tracked above; keep for backward compatibility access.
 ];
 
 if ($reportType === 'correct_report') {
     $categoryTotals['meeting'] = 0;
     $categoryTotals['icyacumi_cya_cms'] = 0;
     $categoryTotals['amaturo_bya_cms'] = 0;
-    foreach ($mapatoPastorList as $record) {
-        $grandTotal += (float) $record['total'];
-        $categoryTotals['icyacumi'] += extractSum($record['icyacumi']);
-        $categoryTotals['icyacumi_cya_cms'] += extractSum($record['icyacumi_cya_cms'] ?? '');
-        $meetingVal = mapatoPastorMeeting($record);
-        $categoryTotals['meeting'] += extractSum($meetingVal);
-        $categoryTotals['amaturo'] += extractSum($record['amaturo']);
-        $categoryTotals['amaturo_bya_cms'] += extractSum($record['amaturo_bya_cms'] ?? '');
-        $categoryTotals['revival'] += extractSum($record['revival']);
-        $categoryTotals['ss'] += extractSum($record['ss']);
-        $categoryTotals['filide'] += extractSum($record['filide']);
-        $categoryTotals['umusaruro'] += extractSum($record['umusaruro']);
-        $categoryTotals['ituro'] += extractSum($record['ituro']);
-        $categoryTotals['mifem'] += extractSum($record['mifem'] ?? '');
+    if (!empty($mapatoPastorList)) {
+        $pastorComputed = computeMapatoPastorCategoryTotals($mapatoPastorList);
+        $categoryTotals = array_merge($categoryTotals, $pastorComputed['category']);
+        $categoryTotals['meeting'] = $pastorComputed['meeting'];
+        $grandTotal = $pastorComputed['grand'];
+        $pastorExtraTotals = $pastorComputed['extra'];
     }
     foreach ($bankSlipsList as $slip) {
         $bankSlipsTotal += (float) $slip['amount'];
@@ -287,17 +280,38 @@ if ($reportType === 'correct_report') {
 
 $pastorExtraColumns = [];
 $pastorExtraTotals = [];
-if (in_array($reportType, ['correct_report', 'comparison_summary'], true) && !empty($mapatoPastorList)) {
-    $pastorExtraColumns = collectMapatoPastorExtraColumns($pdo, $mapatoPastorList);
-    foreach ($pastorExtraColumns as $col) {
-        $pastorExtraTotals[$col['slug']] = 0.0;
+$mapatoPastorInsertedByNames = [];
+if (in_array($reportType, ['correct_report', 'comparison_summary'], true)) {
+    if ($reportType === 'comparison_summary' && $filter_intara !== '' && $filter_month !== '') {
+        $pastorExtraColumns = mapatoPastorExtraColumnsForIntaraMonth(
+            $pdo,
+            (int) $filter_intara,
+            (int) $filter_month,
+            $mapatoPastorList
+        );
+    } elseif ($reportType === 'correct_report' && $filter_intara !== '' && $filter_month !== '') {
+        $pastorExtraColumns = mapatoPastorExtraColumnsForIntaraMonth(
+            $pdo,
+            (int) $filter_intara,
+            (int) $filter_month,
+            $mapatoPastorList
+        );
+    } elseif (!empty($mapatoPastorList)) {
+        $pastorExtraColumns = collectMapatoPastorExtraColumns($pdo, $mapatoPastorList);
     }
-    foreach ($mapatoPastorList as $record) {
-        foreach (decodeMapatoPastorExtraFields($record) as $slug => $stored) {
-            if (!isset($pastorExtraTotals[$slug])) {
-                $pastorExtraTotals[$slug] = 0.0;
+    if (!empty($mapatoPastorList)) {
+        $pastorComputed = computeMapatoPastorCategoryTotals($mapatoPastorList);
+        $pastorExtraTotals = $pastorComputed['extra'];
+        foreach ($pastorExtraColumns as $col) {
+            if (!isset($pastorExtraTotals[$col['slug']])) {
+                $pastorExtraTotals[$col['slug']] = 0.0;
             }
-            $pastorExtraTotals[$slug] += extractSum($stored);
+        }
+        $mapatoPastorInsertedByNames = mapatoPastorDistinctInsertedBy($mapatoPastorList);
+        if ($reportType === 'comparison_summary') {
+            $categoryTotals = array_merge($categoryTotals, $pastorComputed['category']);
+            $categoryTotals['meeting'] = $pastorComputed['meeting'];
+            $grandTotal = $pastorComputed['grand'];
         }
     }
 }
@@ -824,6 +838,48 @@ function downloadExcel() {
         .catch(error => {
             console.error('Error:', error);
             alert('Habaye ikibazo mu gutanga data!');
+        });
+}
+
+function downloadMapatoPastor() {
+    const intaraId = document.getElementById('filter_intara').value;
+    const itoreroId = document.getElementById('filter_itorero').value;
+    const monthVal = document.getElementById('filter_month').value;
+
+    if (!intaraId) {
+        alert('Banza uhitemo Intara kugira ngo ubone Download Mapato ya Pastoro.');
+        return;
+    }
+    if (!monthVal) {
+        alert('Banza uhitemo Ukwezi kugira ngo ubone Download Mapato ya Pastoro.');
+        return;
+    }
+
+    let url = 'export_mapato_pastor.php?intara_id=' + encodeURIComponent(intaraId)
+        + '&month=' + encodeURIComponent(monthVal);
+    if (itoreroId) {
+        url += '&itorero_id=' + encodeURIComponent(itoreroId);
+    }
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length <= 4) {
+                alert('Nta data ihari ya Mapato ya Pastoro kuri iyi Intara n\'ukwezi!');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            XLSX.utils.book_append_sheet(wb, ws, 'Mapato Pastoro');
+
+            const { intaraName, itoreroName, monthName } = getSelectedFilterNames();
+            const filename = 'mapato_pastor_' + sanitizeFilePart(intaraName) + '_' + sanitizeFilePart(itoreroName) + '_' + sanitizeFilePart(monthName) + '.xlsx';
+            XLSX.writeFile(wb, filename);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Habaye ikibazo mu gukora Mapato ya Pastoro!');
         });
 }
 

@@ -62,8 +62,9 @@ $pdfFilename = 'comparison_' . ($cmpIntaraName !== '' ? preg_replace('/[^a-z0-9]
     background: #fff;
 }
 
-#comparison-pdf-root .pdf-table--mapato-a {
-    font-size: 8px;
+#comparison-pdf-root .pdf-table--mapato-a,
+#comparison-pdf-root .pdf-table--mapato-pastor {
+    font-size: 7px;
 }
 
 #comparison-pdf-root #table-grand-totals + .pdf-table-scroll table,
@@ -134,6 +135,9 @@ $pdfFilename = 'comparison_' . ($cmpIntaraName !== '' ? preg_replace('/[^a-z0-9]
 
     <div class="comparison-pdf-actions">
         <button type="button" class="btn-icon" id="btnDownloadComparisonPdf" data-pdf-filename="<?= htmlspecialchars($pdfFilename) ?>" <?= !$hasIntaraMonth ? 'disabled' : '' ?>><?= mi_btn('download', 'Download PDF') ?></button>
+        <?php if (!$isGuest): ?>
+        <button type="button" class="btn-icon" onclick="downloadMapatoPastor()" <?= !$hasIntaraMonth ? 'disabled' : '' ?>><?= mi_btn('download', 'Download Mapato ya Pastoro') ?></button>
+        <?php endif; ?>
         <button type="button" class="btn-icon" onclick="window.print()" <?= !$hasIntaraMonth ? 'disabled' : '' ?>><?= mi_btn('print', 'Print') ?></button>
         <span style="font-size:13px;color:#666;"><?= htmlspecialchars($pdfFilename) ?></span>
         <span id="pdf-export-status" style="font-size:13px;color:#1565c0;width:100%;"></span>

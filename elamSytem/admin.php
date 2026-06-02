@@ -204,7 +204,7 @@ $usersList = getAllUsers($pdo);
         <form method="POST" class="form-row" id="create-user-form">
             <input type="text" name="new_username" placeholder="Username" required>
             <div class="password-wrapper">
-                <input type="password" name="new_password" placeholder="Password (min 6)" required>
+            <input type="password" name="new_password" placeholder="Password (min 6)" required>
                 <button type="button" class="password-toggle" data-shown="false" aria-label="Show password" title="Show password">
                     <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     <svg class="icon-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -303,7 +303,10 @@ $usersList = getAllUsers($pdo);
     <!-- Intara List -->
     <div class="section nav-page-section" data-nav-section="intara-list" id="intara-list">
         <h2><?= mi('map', 22) ?> List y'Intara</h2>
-        <table>
+        <div class="form-row" style="margin: 10px 0;">
+            <input type="text" id="intara_search" placeholder="Shakisha Intara..." style="max-width: 320px;">
+        </div>
+        <table id="intara_table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -340,7 +343,10 @@ $usersList = getAllUsers($pdo);
     <!-- Itorero List -->
     <div class="section nav-page-section" data-nav-section="itorero-list" id="itorero-list">
         <h2><?= mi('church', 22) ?> List y'Itorero</h2>
-        <table>
+        <div class="form-row" style="margin: 10px 0;">
+            <input type="text" id="itorero_search" placeholder="Shakisha Itorero..." style="max-width: 320px;">
+        </div>
+        <table id="itorero_table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -378,6 +384,29 @@ $usersList = getAllUsers($pdo);
         </table>
     </div>
 </div>
+
+<script>
+function filterTableRows(inputId, tableId) {
+    const input = document.getElementById(inputId);
+    const table = document.getElementById(tableId);
+    if (!input || !table) return;
+    const q = (input.value || '').toLowerCase().trim();
+    table.querySelectorAll('tbody tr').forEach(function (tr) {
+        // Keep "empty state" rows visible
+        const tds = Array.from(tr.querySelectorAll('td'));
+        const text = tds.map(td => (td.textContent || '').toLowerCase()).join(' ');
+        tr.style.display = q === '' || text.includes(q) ? '' : 'none';
+    });
+}
+const intaraSearch = document.getElementById('intara_search');
+if (intaraSearch) {
+    intaraSearch.addEventListener('input', function () { filterTableRows('intara_search', 'intara_table'); });
+}
+const itoreroSearch = document.getElementById('itorero_search');
+if (itoreroSearch) {
+    itoreroSearch.addEventListener('input', function () { filterTableRows('itorero_search', 'itorero_table'); });
+}
+</script>
 
 <!-- Edit Intara Modal -->
 <div id="editIntaraModal" class="modal">
@@ -465,7 +494,6 @@ $usersList = getAllUsers($pdo);
 </div>
 
 <script>
-
 function toggleGuestIntaraField() {
     const role = document.getElementById('new_role').value;
     const intaraSelect = document.getElementById('new_intara_id');

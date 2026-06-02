@@ -155,12 +155,124 @@ function mapatoPastorExtraFieldDisplay($record, string $slug): string {
     return htmlspecialchars($extra[$slug] ?? '0');
 }
 
+/**
+ * Extra columns for Intara+month (same order as Insert Mapato from Pastor dropdown).
+ *
+ * @return list<array{slug:string,label:string}>
+ */
+function mapatoPastorExtraColumnsForIntaraMonth($pdo, int $intaraId, int $month, array $records = []): array {
+    if ($intaraId < 1 || $month < 1 || $month > 12) {
+        return collectMapatoPastorExtraColumns($pdo, $records);
+    }
+    $columns = [];
+    $seen = [];
+    foreach (getMapatoPastorFieldDefs($pdo, $intaraId, $month) as $def) {
+        $slug = (string) $def['field_slug'];
+        if ($slug === '' || isset($seen[$slug])) {
+            continue;
+        }
+        $seen[$slug] = true;
+        $columns[] = ['slug' => $slug, 'label' => (string) $def['field_label']];
+    }
+    foreach (collectMapatoPastorExtraColumns($pdo, $records) as $col) {
+        if (isset($seen[$col['slug']])) {
+            continue;
+        }
+        $seen[$col['slug']] = true;
+        $columns[] = $col;
+    }
+    return $columns;
+}
+
+/**
+ * @return list<string> distinct admin usernames who inserted pastor mapato
+ */
+function mapatoPastorDistinctInsertedBy(array $records): array {
+    $names = [];
+    foreach ($records as $record) {
+        $username = trim((string) ($record['inserted_by_username'] ?? ''));
+        if ($username !== '') {
+            $names[$username] = $username;
+        }
+    }
+    return array_values($names);
+}
+
+/**
+ * Category totals for Mapato ya Pastoro (matches insert form / reports table).
+ *
+ * @return array{category: array<string, float>, extra: array<string, float>, grand: float, meeting: float}
+ */
+function computeMapatoPastorCategoryTotals(array $records): array {
+    require_once __DIR__ . '/imibare-math.php';
+    $category = [
+        'icyacumi' => 0.0,
+        'icyacumi_cya_cms' => 0.0,
+        'total_icyacumi_pair' => 0.0,
+        'meeting' => 0.0,
+        'amaturo' => 0.0,
+        'amaturo_bya_cms' => 0.0,
+        'total_amaturo_pair' => 0.0,
+        'total_amaturo_half' => 0.0,
+        'revival' => 0.0,
+        'ss' => 0.0,
+        'filide' => 0.0,
+        'umusaruro' => 0.0,
+        'ituro' => 0.0,
+        'mifem' => 0.0,
+    ];
+    $extra = [];
+    $grand = 0.0;
+    foreach ($records as $record) {
+        $grand += (float) ($record['total'] ?? 0);
+        $icyRecu = extractSum($record['icyacumi'] ?? '');
+        $icyCfms = extractSum($record['icyacumi_cya_cms'] ?? '');
+        $category['icyacumi'] += $icyRecu;
+        $category['icyacumi_cya_cms'] += $icyCfms;
+        $category['total_icyacumi_pair'] += ($icyRecu + $icyCfms);
+        $category['meeting'] += extractSum(mapatoPastorMeeting($record));
+        $amaRecu = extractSum($record['amaturo'] ?? '');
+        $amaCfms = extractSum($record['amaturo_bya_cms'] ?? '');
+        $category['amaturo'] += $amaRecu;
+        $category['amaturo_bya_cms'] += $amaCfms;
+        $category['total_amaturo_pair'] += ($amaRecu + $amaCfms);
+        $category['total_amaturo_half'] += (($amaRecu + $amaCfms) / 2);
+        $category['revival'] += extractSum($record['revival'] ?? '');
+        $category['ss'] += extractSum($record['ss'] ?? '');
+        $category['filide'] += extractSum($record['filide'] ?? '');
+        $category['umusaruro'] += extractSum($record['umusaruro'] ?? '');
+        $category['ituro'] += extractSum($record['ituro'] ?? '');
+        $category['mifem'] += extractSum($record['mifem'] ?? '');
+        foreach (decodeMapatoPastorExtraFields($record) as $slug => $stored) {
+            if (!isset($extra[$slug])) {
+                $extra[$slug] = 0.0;
+            }
+            $extra[$slug] += extractSum($stored);
+        }
+    }
+    return [
+        'category' => $category,
+        'extra' => $extra,
+        'grand' => $grand,
+        'meeting' => $category['meeting'],
+    ];
+}
+
 function sumMapatoPastorRecordTotal(array $seg, array $extraSegs = []): float {
     require_once __DIR__ . '/imibare-math.php';
     $total = 0.0;
-    foreach (mapatoPastorStaticFieldKeys() as $key) {
-        $total += sumValues($seg[$key] ?? '');
-    }
+    // NOTE: For Amaturo, business rule is (RECU + CFMS) ÷ 2.
+    // All other fields are summed normally.
+    $total += sumValues($seg['icyacumi'] ?? '');
+    $total += sumValues($seg['icyacumi_cya_cms'] ?? '');
+    $total += sumValues($seg['meeting'] ?? '');
+    $total += (sumValues($seg['amaturo'] ?? '') + sumValues($seg['amaturo_bya_cms'] ?? '')) / 2;
+    $total += sumValues($seg['revival'] ?? '');
+    $total += sumValues($seg['ss'] ?? '');
+    $total += sumValues($seg['filide'] ?? '');
+    $total += sumValues($seg['umusaruro'] ?? '');
+    $total += sumValues($seg['ituro'] ?? '');
+    $total += sumValues($seg['mifem'] ?? '');
     foreach ($extraSegs as $val) {
         $total += sumValues($val);
     }

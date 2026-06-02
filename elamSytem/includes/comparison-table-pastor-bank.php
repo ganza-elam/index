@@ -39,8 +39,8 @@ $monthLabel = $monthOptions[$mk] ?? '-';
             <td><?php
                 $d = $cmpBank - $cmpPastor;
                 if (abs($d) < 0.01) echo '<span class="cr-status cr-status-equal">Equal</span>';
-                elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Profit</span>';
-                else echo '<span class="cr-status cr-status-loss">Loss</span>';
+                elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Surplus</span>';
+                else echo '<span class="cr-status cr-status-loss">Deficit</span>';
             ?></td>
         </tr>
     </tfoot>

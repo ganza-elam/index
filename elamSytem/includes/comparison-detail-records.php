@@ -114,21 +114,27 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
     <p class="no-data-inline">Nta mapato ya pastoro.</p>
 </div>
 <?php else:
-    $pTotalAll = array_sum(array_map(fn($r) => (float) $r['total'], $mapatoPastorList));
+    $pPdfTotals = computeMapatoPastorCategoryTotals($mapatoPastorList);
+    $pPdfCat = $pPdfTotals['category'];
+    $pPdfExtra = $pPdfTotals['extra'];
 ?>
 <div class="pdf-section-block">
     <h3 class="pdf-section-title"><?= mi('person', 22) ?> Mapato ya Pastoro — all records</h3>
     <div class="pdf-table-scroll">
-    <table class="pdf-table">
+    <table class="pdf-table pdf-table--mapato-pastor" id="pdf-mapato-pastor-table">
         <thead>
             <tr>
                 <th>Itorero</th>
-                <th>Icyacumi</th>
-                <th>CM</th>
-                <th>Amaturo</th>
+                <th>Icyacumi (Grand Total)</th>
+                <th>Icyacumi cya CFMS</th>
+                <th>CM (Meeting)</th>
+                <th>Amaturo (Grand Total)</th>
+                <th>Amaturo ya CFMS</th>
+                <th>Amaturo (RECU+CFMS)</th>
+                <th>Amaturo ÷2</th>
                 <th>Revival</th>
-                <th>SS</th>
-                <th>Inyubako</th>
+                <th>SS Lesson</th>
+                <th>Inyubako (Filide)</th>
                 <th>Umusaruro</th>
                 <th>Udutabo twa JA</th>
                 <th>Udutabo twa Mifem</th>
@@ -136,18 +142,26 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
                 <th><?= htmlspecialchars($col['label']) ?></th>
                 <?php endforeach; ?>
                 <th>Total</th>
-                <th>Date</th>
+                <th>Itariki</th>
+                <th>Admin</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($mapatoPastorList as $record):
                 $meetingDisplay = mapatoPastorMeeting($record);
+                $amaRecu = extractSum($record['amaturo'] ?? '0');
+                $amaCfms = extractSum($record['amaturo_bya_cms'] ?? '0');
+                $amaPair = $amaRecu + $amaCfms;
             ?>
             <tr>
                 <td><strong><?= htmlspecialchars($record['itorero_name'] ?? '—') ?></strong></td>
                 <td><?= htmlspecialchars($record['icyacumi'] ?? '0') ?></td>
+                <td><?= htmlspecialchars($record['icyacumi_cya_cms'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($meetingDisplay ?: '0') ?></td>
                 <td><?= htmlspecialchars($record['amaturo'] ?? '0') ?></td>
+                <td><?= htmlspecialchars($record['amaturo_bya_cms'] ?? '0') ?></td>
+                <td><strong><?= number_format($amaPair, 0) ?></strong></td>
+                <td><strong><?= number_format($amaPair / 2, 0) ?></strong></td>
                 <td><?= htmlspecialchars($record['revival'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['ss'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['filide'] ?? '0') ?></td>
@@ -159,18 +173,42 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
                 <?php endforeach; ?>
                 <td><strong><?= number_format($record['total'], 0) ?></strong></td>
                 <td><?= !empty($record['created_at']) ? date('d/m/Y', strtotime($record['created_at'])) : '—' ?></td>
+                <td><?= htmlspecialchars($record['inserted_by_username'] ?? '—') ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
         <tfoot>
             <tr class="pdf-tfoot-row">
-                <td colspan="<?= 10 + count($pastorExtraColumns) ?>">TOTAL (<?= count($mapatoPastorList) ?>)</td>
-                <td><?= number_format($pTotalAll, 0) ?></td>
+                <td colspan="1">TOTAL (<?= count($mapatoPastorList) ?>)</td>
+                <td><?= number_format($pPdfCat['icyacumi'], 0) ?></td>
+                <td><?= number_format($pPdfCat['icyacumi_cya_cms'], 0) ?></td>
+                <td><?= number_format($pPdfTotals['meeting'], 0) ?></td>
+                <td><?= number_format($pPdfCat['amaturo'], 0) ?></td>
+                <td><?= number_format($pPdfCat['amaturo_bya_cms'], 0) ?></td>
+                <td><?= number_format($pPdfCat['total_amaturo_pair'], 0) ?></td>
+                <td><?= number_format($pPdfCat['total_amaturo_half'], 0) ?></td>
+                <td><?= number_format($pPdfCat['revival'], 0) ?></td>
+                <td><?= number_format($pPdfCat['ss'], 0) ?></td>
+                <td><?= number_format($pPdfCat['filide'], 0) ?></td>
+                <td><?= number_format($pPdfCat['umusaruro'], 0) ?></td>
+                <td><?= number_format($pPdfCat['ituro'], 0) ?></td>
+                <td><?= number_format($pPdfCat['mifem'], 0) ?></td>
+                <?php foreach ($pastorExtraColumns as $col): ?>
+                <td><?= number_format($pPdfExtra[$col['slug']] ?? 0, 0) ?></td>
+                <?php endforeach; ?>
+                <td><strong><?= number_format($pPdfTotals['grand'], 0) ?></strong></td>
+                <td></td>
                 <td></td>
             </tr>
         </tfoot>
     </table>
     </div>
+    <?php if (!empty($mapatoPastorInsertedByNames)): ?>
+    <p class="pdf-meta" style="margin-top:10px;">
+        <strong>Yashyizweho na (Insert Mapato from Pastor):</strong>
+        <?= htmlspecialchars(implode(', ', $mapatoPastorInsertedByNames)) ?>
+    </p>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 

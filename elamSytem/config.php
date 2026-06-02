@@ -4,33 +4,14 @@
  * Plain PHP MySQL Connection
  */
 
- function loadEnvFile($path) {
-    if (!is_readable($path)) return;
-    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        $parts = explode('=', $line, 2);
-        if (count($parts) !== 2) continue;
-        $k = trim($parts[0]);
-        $v = trim(trim($parts[1]), "\"'");
-        if ($k !== '' && getenv($k) === false) { putenv("$k=$v"); $_ENV[$k] = $v; }
-    }
-}
-function envValue($key, $default = null) {
-    $v = getenv($key);
-    return ($v === false || $v === '') ? $default : $v;
-}
-loadEnvFile(__DIR__ . '/.env');
-
-$db_host = envValue('DB_HOST', envValue('MYSQLHOST', '127.0.0.1'));
-$db_port = envValue('DB_PORT', envValue('MYSQLPORT', '3306'));
-$db_name = envValue('DB_NAME', envValue('MYSQLDATABASE', 'elam_system'));
-$db_user = envValue('DB_USER', envValue('MYSQLUSER', 'root'));
-$db_pass = envValue('DB_PASS', envValue('MYSQLPASSWORD', ''));
+$db_host = 'localhost';
+$db_name = 'elam_system';
+$db_user = 'root';
+$db_pass = '';
 
 try {
     $pdo = new PDO(
-        "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4",
+        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
         $db_user,
         $db_pass,
         [
@@ -433,6 +414,11 @@ function migrateCorrectReportColumns($pdo) {
             $pdo->exec("UPDATE mapato_pastor SET meeting = icyacumi_cya_cms WHERE meeting IS NULL AND icyacumi_cya_cms IS NOT NULL AND icyacumi_cya_cms != ''");
         }
     }
+    $cols = $pdo->query("SHOW COLUMNS FROM mapato_pastor")->fetchAll(PDO::FETCH_COLUMN);
+    if ($cols && !in_array('inserted_by', $cols, true)) {
+        $pdo->exec("ALTER TABLE mapato_pastor ADD COLUMN inserted_by int(11) DEFAULT NULL AFTER total");
+        $pdo->exec("ALTER TABLE mapato_pastor ADD KEY idx_mapato_pastor_inserted_by (inserted_by)");
+    }
     $bankCols = $pdo->query("SHOW COLUMNS FROM bank_slips")->fetchAll(PDO::FETCH_COLUMN);
     if ($bankCols && !in_array('month', $bankCols, true)) {
         $pdo->exec("ALTER TABLE bank_slips ADD COLUMN month tinyint unsigned DEFAULT NULL AFTER intara_id");
@@ -450,10 +436,11 @@ function mapatoPastorMeeting($record) {
 
 function saveMapatoPastor($pdo, $data) {
     ensureCorrectReportTables($pdo);
+    $insertedBy = isset($data['inserted_by']) && $data['inserted_by'] !== '' ? (int) $data['inserted_by'] : null;
     $stmt = $pdo->prepare("INSERT INTO mapato_pastor (
         intara_id, itorero_id, month, icyacumi, icyacumi_cya_cms, meeting, amaturo, amaturo_bya_cms,
-        revival, ss, filide, umusaruro, ituro, mifem, extra_fields, total
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        revival, ss, filide, umusaruro, ituro, mifem, extra_fields, total, inserted_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     return $stmt->execute([
         $data['intara_id'],
         $data['itorero_id'] ?? null,
@@ -471,6 +458,7 @@ function saveMapatoPastor($pdo, $data) {
         $data['mifem'] ?? null,
         $data['extra_fields'] ?? null,
         $data['total'],
+        $insertedBy,
     ]);
 }
 
@@ -503,10 +491,12 @@ function updateMapatoPastor($pdo, $id, $data) {
 
 function getMapatoPastorById($pdo, $id) {
     ensureCorrectReportTables($pdo);
-    $stmt = $pdo->prepare("SELECT mp.*, intara.name AS intara_name, it.name AS itorero_name
+    $stmt = $pdo->prepare("SELECT mp.*, intara.name AS intara_name, it.name AS itorero_name,
+        u.username AS inserted_by_username
         FROM mapato_pastor mp
         LEFT JOIN intara ON mp.intara_id = intara.id
         LEFT JOIN itorero it ON mp.itorero_id = it.id
+        LEFT JOIN users u ON mp.inserted_by = u.id
         WHERE mp.id = ? LIMIT 1");
     $stmt->execute([$id]);
     return $stmt->fetch();
@@ -514,10 +504,12 @@ function getMapatoPastorById($pdo, $id) {
 
 function getMapatoPastor($pdo, $intara_id = null, $month = null, $itorero_id = null) {
     ensureCorrectReportTables($pdo);
-    $sql = "SELECT mp.*, intara.name AS intara_name, it.name AS itorero_name
+    $sql = "SELECT mp.*, intara.name AS intara_name, it.name AS itorero_name,
+            u.username AS inserted_by_username
             FROM mapato_pastor mp
             LEFT JOIN intara ON mp.intara_id = intara.id
             LEFT JOIN itorero it ON mp.itorero_id = it.id
+            LEFT JOIN users u ON mp.inserted_by = u.id
             WHERE 1=1";
     $params = [];
     if ($intara_id) {
@@ -879,8 +871,8 @@ function buildComparisonSummaryNarrative($comparisonRows, $comparisonInsertRows,
                 $equal++;
             }
         }
-        $lines[] = '<p><strong>Profit</strong> (bank &gt; pastoro): ' . $profit . ' Intara. '
-            . '<strong>Loss</strong> (pastoro &gt; bank): ' . $loss . ' Intara. <strong>Equal</strong>: ' . $equal . ' Intara.</p>';
+        $lines[] = '<p><strong>Surplus</strong> (bank &gt; pastoro): ' . $profit . ' Intara. '
+            . '<strong>Deficit</strong> (pastoro &gt; bank): ' . $loss . ' Intara. <strong>Equal</strong>: ' . $equal . ' Intara.</p>';
     } else {
         $lines[] = '<p>Nta gereranya Pastoro vs Bank.</p>';
     }
@@ -892,7 +884,7 @@ function buildComparisonSummaryNarrative($comparisonRows, $comparisonInsertRows,
 
     $lines[] = '<h4>4. Grand Totals (Pastoro + INSERT DATA + Bank)</h4>';
     $lines[] = !empty($grandTotalsRows)
-        ? '<p>Table igaragaza grand total zose n\'impari n\'status (Profit / Loss / Equal).</p>'
+        ? '<p>Table igaragaza grand total zose n\'impari n\'status (Surplus / Deficit / Equal).</p>'
         : '<p>Nta grand totals.</p>';
 
     $lines[] = '<p style="font-size:12px;color:#666;margin-top:12px;">Generated ' . htmlspecialchars(date('d/m/Y H:i')) . ' (Africa/Kigali).</p>';
@@ -906,9 +898,9 @@ function correctReportStatusFromDiff($diff) {
         return ['equal', 'Equal'];
     }
     if ($diff > 0) {
-        return ['profit', 'Profit'];
+        return ['profit', 'Surplus'];
     }
-    return ['loss', 'Loss'];
+    return ['loss', 'Deficit'];
 }
 
 /**

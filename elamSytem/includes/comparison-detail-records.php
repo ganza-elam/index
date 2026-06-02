@@ -130,7 +130,11 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
                 <th>SS</th>
                 <th>Inyubako</th>
                 <th>Umusaruro</th>
-                <th>Ituro</th>
+                <th>Udutabo twa JA</th>
+                <th>Udutabo twa Mifem</th>
+                <?php foreach ($pastorExtraColumns as $col): ?>
+                <th><?= htmlspecialchars($col['label']) ?></th>
+                <?php endforeach; ?>
                 <th>Total</th>
                 <th>Date</th>
             </tr>
@@ -149,6 +153,10 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
                 <td><?= htmlspecialchars($record['filide'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['umusaruro'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['ituro'] ?? '0') ?></td>
+                <td><?= htmlspecialchars($record['mifem'] ?? '0') ?></td>
+                <?php foreach ($pastorExtraColumns as $col): ?>
+                <td><?= mapatoPastorExtraFieldDisplay($record, $col['slug']) ?></td>
+                <?php endforeach; ?>
                 <td><strong><?= number_format($record['total'], 0) ?></strong></td>
                 <td><?= !empty($record['created_at']) ? date('d/m/Y', strtotime($record['created_at'])) : '—' ?></td>
             </tr>
@@ -156,7 +164,7 @@ $mapatoAGrandTotal = $mapatoAGrouped['grand_total'];
         </tbody>
         <tfoot>
             <tr class="pdf-tfoot-row">
-                <td colspan="9">TOTAL (<?= count($mapatoPastorList) ?>)</td>
+                <td colspan="<?= 10 + count($pastorExtraColumns) ?>">TOTAL (<?= count($mapatoPastorList) ?>)</td>
                 <td><?= number_format($pTotalAll, 0) ?></td>
                 <td></td>
             </tr>

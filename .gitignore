@@ -1,2 +1,4 @@
 .env
 church_ledger_backup.sql
+*backup_
+backup*

@@ -408,6 +408,9 @@ function ensureCorrectReportTables($pdo) {
 
     migrateCorrectReportColumns($pdo);
 
+    require_once __DIR__ . '/includes/mapato-pastor-fields.php';
+    ensureMapatoPastorExtraFieldsSchema($pdo);
+
     $ensured = true;
 }
 
@@ -449,8 +452,8 @@ function saveMapatoPastor($pdo, $data) {
     ensureCorrectReportTables($pdo);
     $stmt = $pdo->prepare("INSERT INTO mapato_pastor (
         intara_id, itorero_id, month, icyacumi, icyacumi_cya_cms, meeting, amaturo, amaturo_bya_cms,
-        revival, ss, filide, umusaruro, ituro, total
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        revival, ss, filide, umusaruro, ituro, mifem, extra_fields, total
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     return $stmt->execute([
         $data['intara_id'],
         $data['itorero_id'] ?? null,
@@ -465,6 +468,8 @@ function saveMapatoPastor($pdo, $data) {
         $data['filide'],
         $data['umusaruro'],
         $data['ituro'],
+        $data['mifem'] ?? null,
+        $data['extra_fields'] ?? null,
         $data['total'],
     ]);
 }
@@ -473,7 +478,7 @@ function updateMapatoPastor($pdo, $id, $data) {
     ensureCorrectReportTables($pdo);
     $stmt = $pdo->prepare("UPDATE mapato_pastor SET
         intara_id = ?, itorero_id = ?, month = ?, icyacumi = ?, icyacumi_cya_cms = ?, meeting = ?, amaturo = ?, amaturo_bya_cms = ?,
-        revival = ?, ss = ?, filide = ?, umusaruro = ?, ituro = ?, total = ?
+        revival = ?, ss = ?, filide = ?, umusaruro = ?, ituro = ?, mifem = ?, extra_fields = ?, total = ?
         WHERE id = ?");
     return $stmt->execute([
         $data['intara_id'],
@@ -489,6 +494,8 @@ function updateMapatoPastor($pdo, $id, $data) {
         $data['filide'],
         $data['umusaruro'],
         $data['ituro'],
+        $data['mifem'] ?? null,
+        $data['extra_fields'] ?? null,
         $data['total'],
         $id,
     ]);

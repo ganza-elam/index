@@ -335,7 +335,7 @@ function createReceiptRequest($pdo, $userId, $itoreroId, $requestedByAdminId = n
         $prefix = $requestedByAdminId ? 'Request yoherejwe ku izina rya pastoro. ' : '';
         return [
             'success' => true,
-            // 'message' => $prefix . 'Request yoherejwe neza kuri iri Torero. Booklets: ' . $q['used_slots'] . '/' . $q['max_booklets'] . ' (bisigaye: ' . $q['available_slots'] . ').',
+            'message' => $prefix . 'Request yoherejwe neza kuri iri Torero. Booklets: ' . $q['used_slots'] . '/' . $q['max_booklets'] . ' (bisigaye: ' . $q['available_slots'] . ').',
         ];
     }
     return ['success' => false, 'message' => 'Habaye ikibazo mu kohereza request.'];
@@ -485,17 +485,18 @@ function getActiveReceiptRequests($pdo) {
         ORDER BY rr.assigned_at DESC")->fetchAll();
 }
 
-/** Pastor confirmed receipt received (visible to admin). */
+/** Pastor confirmed receipt received — kept in list after admin confirms return. */
 function getAcknowledgedReceiptRequests($pdo) {
     ensureReceiptTables($pdo);
     return $pdo->query("SELECT rr.*, u.username, it.name AS itorero_name, i.name AS intara_name,
-            admin_u.username AS requested_by_admin_name
+            admin_u.username AS requested_by_admin_name,
+            (SELECT MAX(rb.returned_at) FROM receipt_booklets rb WHERE rb.request_id = rr.id) AS booklet_returned_at
         FROM receipt_requests rr
         JOIN users u ON rr.user_id = u.id
         JOIN itorero it ON rr.itorero_id = it.id
         JOIN intara i ON it.intara_id = i.id
         LEFT JOIN users admin_u ON rr.requested_by_admin_id = admin_u.id
-        WHERE rr.status = 'acknowledged'
+        WHERE rr.acknowledged_at IS NOT NULL
         ORDER BY rr.acknowledged_at DESC")->fetchAll();
 }
 

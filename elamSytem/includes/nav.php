@@ -82,7 +82,7 @@ function renderNavDropdown($label, $iconName, $parentActive, $items) {
                 ['label' => 'Comparison Summary & PDF', 'href' => 'reports.php?report_type=comparison_summary#comparison-summary', 'active' => $navIsComparisonSummaryView],
                 ['label' => 'Comparison (Pastoro vs Bank)', 'href' => 'reports.php?report_type=correct_report#comparison-pastor-bank', 'active' => false],
                 ['label' => 'Grand Totals (All sources)', 'href' => 'reports.php?report_type=correct_report#comparison-grand-totals', 'active' => false],
-                ['label' => "Raporo y'Ibyakiriwe vs IBYANYUZE MUMA SUCHE", 'href' => 'reports.php?report_type=correct_report#comparison-bank-insert', 'active' => false],
+                ['label' => 'Bank vs IBYANYUZE MUMA SUCHE', 'href' => 'reports.php?report_type=correct_report#comparison-bank-insert', 'active' => false],
                 ['label' => 'Mapato from Pastor', 'href' => 'reports.php?report_type=correct_report#mapato-pastor-table', 'active' => false],
                 ['label' => 'Bank Slips', 'href' => 'reports.php?report_type=correct_report#bank-slips-table', 'active' => false],
             ]);
@@ -92,7 +92,7 @@ function renderNavDropdown($label, $iconName, $parentActive, $items) {
             ]);
             renderNavDropdown('RECEIPT REQUEST', 'receipt_long', $navIsReceiptRequest, [
                 ['label' => 'Stock (receipt ranges)', 'href' => 'receipt-request.php#receipt-stock', 'active' => $navIsReceiptRequest],
-                // ['label' => 'Itorero — booklet limits', 'href' => 'receipt-request.php#itorero-receipt-limits', 'active' => false],
+                ['label' => 'Itorero — booklet limits', 'href' => 'receipt-request.php#itorero-receipt-limits', 'active' => false],
                 ['label' => 'Saba booklet (Admin)', 'href' => 'receipt-request.php#admin-request-behalf', 'active' => false],
                 ['label' => 'Pending requests', 'href' => 'receipt-request.php#pending-requests', 'active' => false],
                 ['label' => 'Pastor yemeje booklet', 'href' => 'receipt-request.php#pastor-acknowledged', 'active' => false],

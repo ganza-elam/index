@@ -158,9 +158,18 @@ function mapatoPastorExtraFieldDisplay($record, string $slug): string {
 function sumMapatoPastorRecordTotal(array $seg, array $extraSegs = []): float {
     require_once __DIR__ . '/imibare-math.php';
     $total = 0.0;
-    foreach (mapatoPastorStaticFieldKeys() as $key) {
-        $total += sumValues($seg[$key] ?? '');
-    }
+    // NOTE: For Amaturo, business rule is (RECU + CFMS) ÷ 2.
+    // All other fields are summed normally.
+    $total += sumValues($seg['icyacumi'] ?? '');
+    $total += sumValues($seg['icyacumi_cya_cms'] ?? '');
+    $total += sumValues($seg['meeting'] ?? '');
+    $total += (sumValues($seg['amaturo'] ?? '') + sumValues($seg['amaturo_bya_cms'] ?? '')) / 2;
+    $total += sumValues($seg['revival'] ?? '');
+    $total += sumValues($seg['ss'] ?? '');
+    $total += sumValues($seg['filide'] ?? '');
+    $total += sumValues($seg['umusaruro'] ?? '');
+    $total += sumValues($seg['ituro'] ?? '');
+    $total += sumValues($seg['mifem'] ?? '');
     foreach ($extraSegs as $val) {
         $total += sumValues($val);
     }

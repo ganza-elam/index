@@ -235,9 +235,10 @@ $categoryTotals = [
     'ibindi' => 0,
     'icyacumi' => 0, 'icyacumi_cya_cms' => 0, 'total_icyacumi_pair' => 0, 'amaturo' => 0, 'amaturo_bya_cms' => 0,
     'total_amaturo_pair' => 0,
+    'total_amaturo_half' => 0,
     'umusaruro' => 0, 'ituro' => 0, 'filide' => 0, 'ss' => 0, 'ubusonga' => 0, 'mifem' => 0, 'ja' => 0,
     'revival' => 0,
-    'mifem' => 0,
+    // 'mifem' already tracked above; keep for backward compatibility access.
 ];
 
 if ($reportType === 'correct_report') {
@@ -246,12 +247,19 @@ if ($reportType === 'correct_report') {
     $categoryTotals['amaturo_bya_cms'] = 0;
     foreach ($mapatoPastorList as $record) {
         $grandTotal += (float) $record['total'];
-        $categoryTotals['icyacumi'] += extractSum($record['icyacumi']);
-        $categoryTotals['icyacumi_cya_cms'] += extractSum($record['icyacumi_cya_cms'] ?? '');
+        $icyRecu = extractSum($record['icyacumi']);
+        $icyCfms = extractSum($record['icyacumi_cya_cms'] ?? '');
+        $categoryTotals['icyacumi'] += $icyRecu;
+        $categoryTotals['icyacumi_cya_cms'] += $icyCfms;
+        $categoryTotals['total_icyacumi_pair'] += ($icyRecu + $icyCfms);
         $meetingVal = mapatoPastorMeeting($record);
         $categoryTotals['meeting'] += extractSum($meetingVal);
-        $categoryTotals['amaturo'] += extractSum($record['amaturo']);
-        $categoryTotals['amaturo_bya_cms'] += extractSum($record['amaturo_bya_cms'] ?? '');
+        $amaRecu = extractSum($record['amaturo']);
+        $amaCfms = extractSum($record['amaturo_bya_cms'] ?? '');
+        $categoryTotals['amaturo'] += $amaRecu;
+        $categoryTotals['amaturo_bya_cms'] += $amaCfms;
+        $categoryTotals['total_amaturo_pair'] += ($amaRecu + $amaCfms);
+        $categoryTotals['total_amaturo_half'] += (($amaRecu + $amaCfms) / 2);
         $categoryTotals['revival'] += extractSum($record['revival']);
         $categoryTotals['ss'] += extractSum($record['ss']);
         $categoryTotals['filide'] += extractSum($record['filide']);
@@ -360,7 +368,7 @@ if ($isGuest && $guestIntaraId !== null) {
         </div>
     </div>
     
-    <p style="text-align:right;color:#666;">May the Lord be with you <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
+    <p style="text-align:right;color:#666;">May The Lord be with you: <b><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></b></p>
     <?= $message ?>
 
     <?php if ($reportType === 'insert_data'): ?>

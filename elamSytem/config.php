@@ -4,33 +4,14 @@
  * Plain PHP MySQL Connection
  */
 
- function loadEnvFile($path) {
-    if (!is_readable($path)) return;
-    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        $parts = explode('=', $line, 2);
-        if (count($parts) !== 2) continue;
-        $k = trim($parts[0]);
-        $v = trim(trim($parts[1]), "\"'");
-        if ($k !== '' && getenv($k) === false) { putenv("$k=$v"); $_ENV[$k] = $v; }
-    }
-}
-function envValue($key, $default = null) {
-    $v = getenv($key);
-    return ($v === false || $v === '') ? $default : $v;
-}
-loadEnvFile(__DIR__ . '/.env');
-
-$db_host = envValue('DB_HOST', envValue('MYSQLHOST', '127.0.0.1'));
-$db_port = envValue('DB_PORT', envValue('MYSQLPORT', '3306'));
-$db_name = envValue('DB_NAME', envValue('MYSQLDATABASE', 'elam_system'));
-$db_user = envValue('DB_USER', envValue('MYSQLUSER', 'root'));
-$db_pass = envValue('DB_PASS', envValue('MYSQLPASSWORD', ''));
+$db_host = 'localhost';
+$db_name = 'elam_system';
+$db_user = 'root';
+$db_pass = '';
 
 try {
     $pdo = new PDO(
-        "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4",
+        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
         $db_user,
         $db_pass,
         [
@@ -879,8 +860,8 @@ function buildComparisonSummaryNarrative($comparisonRows, $comparisonInsertRows,
                 $equal++;
             }
         }
-        $lines[] = '<p><strong>Profit</strong> (bank &gt; pastoro): ' . $profit . ' Intara. '
-            . '<strong>Loss</strong> (pastoro &gt; bank): ' . $loss . ' Intara. <strong>Equal</strong>: ' . $equal . ' Intara.</p>';
+        $lines[] = '<p><strong>Surplus</strong> (bank &gt; pastoro): ' . $profit . ' Intara. '
+            . '<strong>Deficit</strong> (pastoro &gt; bank): ' . $loss . ' Intara. <strong>Equal</strong>: ' . $equal . ' Intara.</p>';
     } else {
         $lines[] = '<p>Nta gereranya Pastoro vs Bank.</p>';
     }
@@ -892,7 +873,7 @@ function buildComparisonSummaryNarrative($comparisonRows, $comparisonInsertRows,
 
     $lines[] = '<h4>4. Grand Totals (Pastoro + INSERT DATA + Bank)</h4>';
     $lines[] = !empty($grandTotalsRows)
-        ? '<p>Table igaragaza grand total zose n\'impari n\'status (Profit / Loss / Equal).</p>'
+        ? '<p>Table igaragaza grand total zose n\'impari n\'status (Surplus / Deficit / Equal).</p>'
         : '<p>Nta grand totals.</p>';
 
     $lines[] = '<p style="font-size:12px;color:#666;margin-top:12px;">Generated ' . htmlspecialchars(date('d/m/Y H:i')) . ' (Africa/Kigali).</p>';
@@ -906,9 +887,9 @@ function correctReportStatusFromDiff($diff) {
         return ['equal', 'Equal'];
     }
     if ($diff > 0) {
-        return ['profit', 'Profit'];
+        return ['profit', 'Surplus'];
     }
-    return ['loss', 'Loss'];
+    return ['loss', 'Deficit'];
 }
 
 /**

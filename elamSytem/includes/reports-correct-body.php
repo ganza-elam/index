@@ -40,7 +40,8 @@ $crMeetingTotal = $categoryTotals['meeting'] ?? 0;
 <div class="category-summary">
     <div class="cat-item"><div class="label">Icyacumi</div><div class="value"><?= number_format($categoryTotals['icyacumi'], 0) ?></div></div>
     <div class="cat-item"><div class="label">CM (Meeting)</div><div class="value"><?= number_format($crMeetingTotal, 0) ?></div></div>
-    <div class="cat-item"><div class="label">Amaturo</div><div class="value"><?= number_format($categoryTotals['amaturo'], 0) ?></div></div>
+                <div class="cat-item"><div class="label">Amaturo (RECU+CFMS)</div><div class="value"><?= number_format($categoryTotals['total_amaturo_pair'] ?? 0, 0) ?></div></div>
+                <div class="cat-item"><div class="label">Amaturo ÷2</div><div class="value"><?= number_format($categoryTotals['total_amaturo_half'] ?? 0, 0) ?></div></div>
     <div class="cat-item"><div class="label">Revival</div><div class="value"><?= number_format($categoryTotals['revival'], 0) ?></div></div>
     <div class="cat-item"><div class="label">SS Lesson</div><div class="value"><?= number_format($categoryTotals['ss'], 0) ?></div></div>
     <div class="cat-item"><div class="label">Inyubako</div><div class="value"><?= number_format($categoryTotals['filide'], 0) ?></div></div>
@@ -56,7 +57,7 @@ $crMeetingTotal = $categoryTotals['meeting'] ?? 0;
 
 <div class="nav-page-section" data-nav-section="comparison-pastor-bank" id="comparison-pastor-bank">
 <h3><?= mi('compare_arrows', 22) ?> Comparison: Mapato ya Pastoro vs Bank Slip</h3>
-<p style="color:#666;margin-bottom:12px;">Hitamo <strong>Intara</strong> na <strong>Ukwezi</strong> hejuru, ukande <strong>Search</strong>. Profit = amafaranga muri banki ararenze mapato ya pastoro. Loss = mapato ya pastoro ararenze banki.</p>
+<p style="color:#666;margin-bottom:12px;">Hitamo <strong>Intara</strong> na <strong>Ukwezi</strong> hejuru, ukande <strong>Search</strong>. Surplus = amafaranga muri banki ararenze mapato ya pastoro. Deficit = mapato ya pastoro ararenze banki.</p>
 
 <?php
 $cmpMonthInt = (int) $filter_month;
@@ -141,8 +142,8 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($comparisonRows)) {
                 <td><?php
                     $d = $cmpBank - $cmpPastor;
                     if (abs($d) < 0.01) echo '<span class="cr-status cr-status-equal">Equal</span>';
-                    elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Profit</span>';
-                    else echo '<span class="cr-status cr-status-loss">Loss</span>';
+                    elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Surplus</span>';
+                    else echo '<span class="cr-status cr-status-loss">Deficit</span>';
                 ?></td>
             </tr>
         </tfoot>
@@ -153,7 +154,7 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($comparisonRows)) {
 
 <div class="nav-page-section" data-nav-section="comparison-grand-totals" id="comparison-grand-totals">
 <h3 style="margin-top:0;"><?= mi('compare_arrows', 22) ?> Grand Totals: Pastoro, IBYANYUZE MUMA SUCHE &amp; Bank Slip</h3>
-<p style="color:#666;margin-bottom:12px;">Gereranya grand total zose: <strong>Mapato ya Pastoro</strong> (IBYAKIRIWE KURI RAPORT), <strong>IBYANYUZE MUMA SUCHE</strong> (raporo yinjijwe), na <strong>Bank Slip</strong>. Profit/Loss/Equal = ukuze ugereranya (Bank − indi source).</p>
+<p style="color:#666;margin-bottom:12px;">Gereranya grand total zose: <strong>Mapato ya Pastoro</strong> (IBYAKIRIWE KURI RAPORT), <strong>IBYANYUZE MUMA SUCHE</strong> (raporo yinjijwe), na <strong>Bank Slip</strong>. Surplus/Deficit/Equal = ukuze ugereranya (Bank − indi source).</p>
 
 <?php
 $cmpGrandSingle = null;
@@ -232,22 +233,22 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
                 <td><?php
                     $d = $gtBank - $gtPastor;
                     if (abs($d) < 0.01) echo '<span class="cr-status cr-status-equal">Equal</span>';
-                    elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Profit</span>';
-                    else echo '<span class="cr-status cr-status-loss">Loss</span>';
+                    elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Surplus</span>';
+                    else echo '<span class="cr-status cr-status-loss">Deficit</span>';
                 ?></td>
                 <td><?= number_format($gtBank - $gtInsert, 0) ?></td>
                 <td><?php
                     $d = $gtBank - $gtInsert;
                     if (abs($d) < 0.01) echo '<span class="cr-status cr-status-equal">Equal</span>';
-                    elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Profit</span>';
-                    else echo '<span class="cr-status cr-status-loss">Loss</span>';
+                    elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Surplus</span>';
+                    else echo '<span class="cr-status cr-status-loss">Deficit</span>';
                 ?></td>
                 <td><?= number_format($gtPastor - $gtInsert, 0) ?></td>
                 <td><?php
                     $d = $gtPastor - $gtInsert;
                     if (abs($d) < 0.01) echo '<span class="cr-status cr-status-equal">Equal</span>';
-                    elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Profit</span>';
-                    else echo '<span class="cr-status cr-status-loss">Loss</span>';
+                    elseif ($d > 0) echo '<span class="cr-status cr-status-profit">Surplus</span>';
+                    else echo '<span class="cr-status cr-status-loss">Deficit</span>';
                 ?></td>
             </tr>
         </tfoot>
@@ -380,6 +381,8 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
                 <th>CM (Meeting)</th>
                 <th>Amaturo</th>
                 <th>Amaturo CFMS</th>
+                <th>Amaturo (RECU+CFMS)</th>
+                <th>Amaturo ÷2</th>
                 <th>Revival</th>
                 <th>SS Lesson</th>
                 <th>Inyubako</th>
@@ -410,6 +413,14 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
                 <td><?= htmlspecialchars($meetingDisplay ?: '0') ?></td>
                 <td><?= htmlspecialchars($record['amaturo'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['amaturo_bya_cms'] ?? '0') ?></td>
+                <?php
+                    $amaRecu = extractSum($record['amaturo'] ?? '0');
+                    $amaCfms = extractSum($record['amaturo_bya_cms'] ?? '0');
+                    $amaPair = $amaRecu + $amaCfms;
+                    $amaHalf = $amaPair / 2;
+                ?>
+                <td><strong><?= number_format($amaPair, 0) ?></strong></td>
+                <td><strong><?= number_format($amaHalf, 0) ?></strong></td>
                 <td><?= htmlspecialchars($record['revival'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['ss'] ?? '0') ?></td>
                 <td><?= htmlspecialchars($record['filide'] ?? '0') ?></td>
@@ -439,13 +450,15 @@ if ($filter_intara !== '' && $filter_month !== '' && !empty($grandTotalsRows)) {
             <?php endforeach; ?>
         </tbody>
         <tfoot>
-            <tr style="background: #e8f5e9; font-weight: bold;">
+            <tr style="background: #ffecb3; color:#000; font-weight: 900;">
                 <td colspan="3">TOTAL</td>
                 <td><?= number_format($categoryTotals['icyacumi'], 0) ?></td>
                 <td><?= number_format($categoryTotals['icyacumi_cya_cms'] ?? 0, 0) ?></td>
                 <td><?= number_format($crMeetingTotal, 0) ?></td>
                 <td><?= number_format($categoryTotals['amaturo'], 0) ?></td>
                 <td><?= number_format($categoryTotals['amaturo_bya_cms'] ?? 0, 0) ?></td>
+                <td><?= number_format($categoryTotals['total_amaturo_pair'] ?? 0, 0) ?></td>
+                <td><?= number_format($categoryTotals['total_amaturo_half'] ?? 0, 0) ?></td>
                 <td><?= number_format($categoryTotals['revival'], 0) ?></td>
                 <td><?= number_format($categoryTotals['ss'], 0) ?></td>
                 <td><?= number_format($categoryTotals['filide'], 0) ?></td>

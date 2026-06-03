@@ -109,6 +109,22 @@ function encodeMapatoPastorExtraFields(array $fields): ?string {
 }
 
 /**
+ * First extra field definition with no value entered.
+ *
+ * @param array<string, string> $valuesBySlug
+ * @param array<string, string> $labelBySlug slug => label
+ * @return array{slug: string, label: string}|null
+ */
+function findEmptyMapatoPastorExtraField(array $valuesBySlug, array $labelBySlug): ?array {
+    foreach ($labelBySlug as $slug => $label) {
+        if (trim((string) ($valuesBySlug[$slug] ?? '')) === '') {
+            return ['slug' => (string) $slug, 'label' => (string) $label];
+        }
+    }
+    return null;
+}
+
+/**
  * Distinct extra field columns for a set of pastor records (preserves label order).
  *
  * @return list<array{slug:string,label:string}>

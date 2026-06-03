@@ -508,6 +508,19 @@ function updateMapatoPastor($pdo, $id, $data) {
     ]);
 }
 
+function getSelectedName($pdo, $table, $id) {
+    if (empty($id)) {
+        return null;
+    }
+    if (!in_array($table, ['intara', 'itorero'], true)) {
+        return null;
+    }
+    $stmt = $pdo->prepare("SELECT name FROM {$table} WHERE id = ? LIMIT 1");
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    return $row['name'] ?? null;
+}
+
 function getMapatoPastorById($pdo, $id) {
     ensureCorrectReportTables($pdo);
     $stmt = $pdo->prepare("SELECT mp.*, intara.name AS intara_name, it.name AS itorero_name,

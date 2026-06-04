@@ -136,13 +136,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_pastor_mapato'])
                         }
                     }
                 }
+                $extraPost = $pastorForm['extra_field'];
+                $emptyExtra = findEmptyMapatoPastorExtraField($extraPost, $extraLabelBySlug);
+                if ($emptyExtra !== null) {
+                    $message = '<div class="alert error">Inzego nshya <strong>' . htmlspecialchars($emptyExtra['label']) . '</strong> nta makuru arimo. Uzuze agaciro cyangwa uyisibe (kanda <strong>Siba</strong>).</div>';
+                    $pastorHighlightIds[] = 'extra_field_' . $emptyExtra['slug'];
+                    $activeSection = 'pastor';
+                } else {
                 syncMapatoPastorFieldDefs($pdo, (int) $intara_id, $month_val, $extraLabelBySlug);
 
                 $extraSlugs = array_keys($extraLabelBySlug);
                 $extraSegmentsBySlug = [];
                 $extraAlignError = null;
                 $extraAlignErrorSlug = null;
-                $extraPost = $pastorForm['extra_field'];
                 foreach ($extraSlugs as $slug) {
                     $extraSegmentsBySlug[$slug] = alignCommaFieldSegments($extraPost[$slug] ?? '', $n);
                     if ($extraSegmentsBySlug[$slug] === null) {
@@ -204,6 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_pastor_mapato'])
                     $message = '<div class="alert error">Habaye ikibazo mu kubika mapato ya pastoro.</div>';
                 }
                 $activeSection = 'pastor';
+                }
                 }
             }
         }
@@ -344,6 +351,23 @@ if ($pastorForm !== null) {
             border-color: #c62828;
             box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.2);
         }
+        .cr-extra-field-wrap .input-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .cr-extra-field-wrap .input-row input { flex: 1; min-width: 140px; }
+        .cr-extra-remove-btn {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .cr-extra-remove-btn:hover { background: #ffcdd2; }
+        #cr_new_field_label.field-error,
+        #cr_new_field_value.field-error {
+            border-color: #c62828;
+            box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.2);
+        }
     </style>
 </head>
 <body class="app-body" data-skip-page-sections="1">
@@ -370,7 +394,7 @@ if ($pastorForm !== null) {
 
     <div id="section-pastor" class="cr-section <?= $activeSection === 'pastor' ? 'active' : '' ?>">
         <h3>Insert Mapato from the Pastor</h3>
-        <form method="POST" style="max-width: 1000px;">
+        <form method="POST" id="cr_pastor_form" style="max-width: 1000px;">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px 24px;">
                 <div class="form-group<?= crPastorFieldClass($pastorForm, $pastorHighlightIds, 'cr_intara_id') ?>">
                     <label>Intara:</label>
@@ -685,6 +709,50 @@ function syncExtraFieldDefsHidden() {
     document.getElementById('extra_field_defs_json').value = JSON.stringify(crExtraFieldDefs);
 }
 
+function removeExtraField(slug) {
+    crExtraFieldDefs = crExtraFieldDefs.filter(function (d) { return d.slug !== slug; });
+    const wrap = document.querySelector('.cr-extra-field-wrap[data-slug="' + slug + '"]');
+    if (wrap) wrap.remove();
+    syncExtraFieldDefsHidden();
+    calcPastor();
+}
+
+function validatePastorExtraFieldsBeforeSubmit() {
+    const pendingLabel = (document.getElementById('cr_new_field_label').value || '').trim();
+    const pendingValue = (document.getElementById('cr_new_field_value').value || '').trim();
+    const labelEl = document.getElementById('cr_new_field_label');
+    const valueEl = document.getElementById('cr_new_field_value');
+    labelEl.classList.remove('field-error');
+    valueEl.classList.remove('field-error');
+    document.querySelectorAll('.cr-extra-field-wrap').forEach(function (w) { w.classList.remove('field-error'); });
+
+    if (pendingLabel !== '') {
+        labelEl.classList.add('field-error');
+        if (pendingValue !== '') {
+            valueEl.classList.add('field-error');
+        }
+        return {
+            ok: false,
+            message: 'Wanditse inzego nshya ariko ntuyongeyeho. Kanda "+ Ongeraho" cyangwa usibe izina n\'agaciro.'
+        };
+    }
+
+    for (let i = 0; i < crExtraFieldDefs.length; i++) {
+        const def = crExtraFieldDefs[i];
+        const input = document.getElementById('extra_field_' + def.slug);
+        if (!input || (input.value || '').trim() !== '') {
+            continue;
+        }
+        const wrap = input.closest('.cr-extra-field-wrap');
+        if (wrap) wrap.classList.add('field-error');
+        return {
+            ok: false,
+            message: 'Inzego nshya "' + def.label + '" nta makuru arimo. Uzuze agaciro cyangwa uyisibe (kanda Siba).'
+        };
+    }
+    return { ok: true, message: '' };
+}
+
 function renderExtraFieldInput(def, presetValue) {
     const container = document.getElementById('cr_extra_fields_container');
     if (document.getElementById('extra_field_' + def.slug)) return;
@@ -697,6 +765,7 @@ function renderExtraFieldInput(def, presetValue) {
         '<div class="input-row">' +
         '<input type="text" class="cr-extra-field-input" id="extra_field_' + def.slug + '" name="extra_field[' + def.slug + ']" placeholder="Urugero: 1000+2000" oninput="calcPastor()">' +
         '<span class="sum">= <span class="cr-extra-sum" data-for="extra_field_' + def.slug + '">0</span></span>' +
+        '<button type="button" class="cr-extra-remove-btn" data-slug="' + def.slug + '">Siba</button>' +
         '</div>';
     container.appendChild(wrap);
     const inputEl = document.getElementById('extra_field_' + def.slug);
@@ -788,6 +857,43 @@ if (crAddBtn) {
         document.getElementById('cr_new_field_value').value = '';
     });
 }
+const crExtraContainer = document.getElementById('cr_extra_fields_container');
+if (crExtraContainer) {
+    crExtraContainer.addEventListener('click', function (e) {
+        const btn = e.target.closest('.cr-extra-remove-btn');
+        if (!btn || !btn.dataset.slug) return;
+        removeExtraField(btn.dataset.slug);
+    });
+}
+
+const crPastorForm = document.getElementById('cr_pastor_form');
+if (crPastorForm) {
+    crPastorForm.addEventListener('submit', function (e) {
+        const submitter = e.submitter;
+        if (!submitter || submitter.name !== 'save_pastor_mapato') return;
+        const check = validatePastorExtraFieldsBeforeSubmit();
+        if (!check.ok) {
+            e.preventDefault();
+            let alertEl = document.getElementById('cr_extra_validation_alert');
+            if (!alertEl) {
+                alertEl = document.createElement('div');
+                alertEl.id = 'cr_extra_validation_alert';
+                alertEl.className = 'alert error';
+                alertEl.setAttribute('role', 'alert');
+                const h3 = document.querySelector('#section-pastor h3');
+                if (h3) {
+                    h3.insertAdjacentElement('afterend', alertEl);
+                }
+            }
+            alertEl.textContent = check.message;
+            alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            const alertEl = document.getElementById('cr_extra_validation_alert');
+            if (alertEl) alertEl.remove();
+        }
+    });
+}
+
 if (restorePastorFormExtras()) {
     if (typeof updateItoreroHint === 'function') {
         updateItoreroHint();

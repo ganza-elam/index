@@ -24,6 +24,7 @@ $intaraList = getAllIntara($pdo);
 $itoreroList = getAllItorero($pdo);
 $monthOptions = imibareMonthOptions();
 $message = '';
+$editHighlightExtraSlug = '';
 
 function parseStoredInput($value) {
     if (!$value || $value === '0') {
@@ -57,11 +58,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
             }
         }
     }
+    $extraPost = is_array($_POST['extra_field'] ?? null) ? $_POST['extra_field'] : [];
+    $emptyExtra = findEmptyMapatoPastorExtraField($extraPost, $extraLabelBySlug);
+
+    if ($intara_id === '') {
+        $message = '<div class="alert error">Hitamo Intara</div>';
+    } elseif ($itorero_id === '') {
+        $message = '<div class="alert error">Hitamo Itorero</div>';
+    } elseif ($month_val < 1 || $month_val > 12) {
+        $message = '<div class="alert error">Hitamo ukwezi</div>';
+    } elseif ($emptyExtra !== null) {
+        $message = '<div class="alert error">Inzego nshya <strong>' . htmlspecialchars($emptyExtra['label']) . '</strong> nta makuru arimo. Uzuze agaciro cyangwa uyisibe (kanda <strong>Siba</strong>).</div>';
+        $editHighlightExtraSlug = $emptyExtra['slug'];
+    } else {
     syncMapatoPastorFieldDefs($pdo, (int) $intara_id, $month_val, $extraLabelBySlug);
 
     $extraStoredOut = [];
     $extraSegValues = [];
-    $extraPost = is_array($_POST['extra_field'] ?? null) ? $_POST['extra_field'] : [];
     foreach (array_keys($extraLabelBySlug) as $slug) {
         $raw = trim($extraPost[$slug] ?? '');
         $extraSegValues[] = $raw;
@@ -70,13 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_record'])) {
 
     $total = sumMapatoPastorRecordTotal($seg, $extraSegValues);
 
-    if ($intara_id === '') {
-        $message = '<div class="alert error">Hitamo Intara</div>';
-    } elseif ($itorero_id === '') {
-        $message = '<div class="alert error">Hitamo Itorero</div>';
-    } elseif ($month_val < 1 || $month_val > 12) {
-        $message = '<div class="alert error">Hitamo ukwezi</div>';
-    } else {
         $data = [
             'intara_id' => $intara_id,
             'itorero_id' => $itorero_id,
@@ -114,6 +120,12 @@ $staticLabels = mapatoPastorStaticFieldLabels();
     <style>
         .cr-extra-fields-zone { border: 2px dashed #90caf9; border-radius: 10px; padding: 16px; margin-top: 8px; background: #f8fbff; grid-column: 1 / -1; }
         .cr-add-field-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
+        .edit-extra-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .edit-extra-row input { flex: 1; min-width: 140px; }
+        .edit-extra-remove-btn { padding: 6px 12px; font-size: 0.85rem; background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; border-radius: 6px; cursor: pointer; }
+        .form-group.field-error label { color: #c62828; }
+        .form-group.field-error input { border-color: #c62828; box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.2); }
+        #edit_new_field_label.field-error { border-color: #c62828; box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.2); }
     </style>
 </head>
 <body class="app-body">
@@ -121,7 +133,7 @@ $staticLabels = mapatoPastorStaticFieldLabels();
 <div class="container">
     <?= $message ?>
     <h2 class="page-title">Hindura Mapato ya Pastoro</h2>
-    <form method="POST" style="max-width: 1000px;">
+    <form method="POST" id="edit_mapato_form" style="max-width: 1000px;">
         <input type="hidden" name="record_id" value="<?= (int) $recordId ?>">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
             <div class="form-group">
@@ -179,6 +191,7 @@ $staticLabels = mapatoPastorStaticFieldLabels();
 <script>
 let editExtraFieldDefs = <?= json_encode(array_map(fn($d) => ['slug' => $d['field_slug'], 'label' => $d['field_label']], $extraFieldDefs), JSON_UNESCAPED_UNICODE) ?>;
 const editExtraStored = <?= json_encode(array_map('parseStoredInput', $extraStored), JSON_UNESCAPED_UNICODE) ?>;
+const EDIT_HIGHLIGHT_EXTRA_SLUG = <?= json_encode($editHighlightExtraSlug, JSON_UNESCAPED_UNICODE) ?>;
 
 function sumValues(val) {
     if (!val) return 0;
@@ -187,15 +200,45 @@ function sumValues(val) {
 function syncEditExtraDefs() {
     document.getElementById('extra_field_defs_json').value = JSON.stringify(editExtraFieldDefs);
 }
+function removeEditExtraField(slug) {
+    editExtraFieldDefs = editExtraFieldDefs.filter(function (d) { return d.slug !== slug; });
+    const wrap = document.querySelector('.edit-extra-wrap[data-slug="' + slug + '"]');
+    if (wrap) wrap.remove();
+    syncEditExtraDefs();
+    calcEdit();
+}
 function renderEditExtraField(def) {
     if (document.getElementById('edit_extra_' + def.slug)) return;
     const wrap = document.createElement('div');
-    wrap.className = 'form-group';
+    wrap.className = 'form-group edit-extra-wrap';
+    wrap.dataset.slug = def.slug;
     wrap.innerHTML = '<label>' + def.label.replace(/</g, '&lt;') + ':</label>' +
-        '<input type="text" class="edit-extra-input" id="edit_extra_' + def.slug + '" name="extra_field[' + def.slug + ']" oninput="calcEdit()">';
+        '<div class="edit-extra-row">' +
+        '<input type="text" class="edit-extra-input" id="edit_extra_' + def.slug + '" name="extra_field[' + def.slug + ']" oninput="calcEdit()">' +
+        '<button type="button" class="edit-extra-remove-btn" data-slug="' + def.slug + '">Siba</button></div>';
     document.getElementById('edit_extra_fields_container').appendChild(wrap);
     const inp = document.getElementById('edit_extra_' + def.slug);
     if (editExtraStored[def.slug]) inp.value = editExtraStored[def.slug];
+    if (EDIT_HIGHLIGHT_EXTRA_SLUG === def.slug) wrap.classList.add('field-error');
+}
+function validateEditExtraFieldsBeforeSubmit() {
+    const pending = (document.getElementById('edit_new_field_label').value || '').trim();
+    const labelEl = document.getElementById('edit_new_field_label');
+    labelEl.classList.remove('field-error');
+    document.querySelectorAll('.edit-extra-wrap').forEach(function (w) { w.classList.remove('field-error'); });
+    if (pending !== '') {
+        labelEl.classList.add('field-error');
+        return { ok: false, message: 'Wanditse inzego nshya ariko ntuyongeyeho. Kanda "+ Ongeraho" cyangwa usibe izina.' };
+    }
+    for (let i = 0; i < editExtraFieldDefs.length; i++) {
+        const def = editExtraFieldDefs[i];
+        const input = document.getElementById('edit_extra_' + def.slug);
+        if (!input || (input.value || '').trim() !== '') continue;
+        const wrap = input.closest('.edit-extra-wrap');
+        if (wrap) wrap.classList.add('field-error');
+        return { ok: false, message: 'Inzego nshya "' + def.label + '" nta makuru arimo. Uzuze agaciro cyangwa uyisibe (kanda Siba).' };
+    }
+    return { ok: true, message: '' };
 }
 function addEditExtraField(label) {
     label = (label || '').trim();
@@ -220,6 +263,17 @@ syncEditExtraDefs();
 document.getElementById('edit_add_extra_field_btn').addEventListener('click', function () {
     addEditExtraField(document.getElementById('edit_new_field_label').value);
     document.getElementById('edit_new_field_label').value = '';
+});
+document.getElementById('edit_extra_fields_container').addEventListener('click', function (e) {
+    const btn = e.target.closest('.edit-extra-remove-btn');
+    if (btn && btn.dataset.slug) removeEditExtraField(btn.dataset.slug);
+});
+document.getElementById('edit_mapato_form').addEventListener('submit', function (e) {
+    const check = validateEditExtraFieldsBeforeSubmit();
+    if (!check.ok) {
+        e.preventDefault();
+        alert(check.message);
+    }
 });
 const editIntaraSelect = document.getElementById('edit_intara_id');
 const editItoreroSelect = document.getElementById('edit_itorero_id');

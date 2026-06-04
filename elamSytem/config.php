@@ -445,12 +445,9 @@ function migrateCorrectReportColumns($pdo) {
     $migrated = true;
 }
 
-/** Meeting field (CM) with legacy column fallback. */
+/** Meeting field (CM) — no legacy fallback. */
 function mapatoPastorMeeting($record) {
-    if (!empty($record['meeting'])) {
-        return $record['meeting'];
-    }
-    return $record['icyacumi_cya_cms'] ?? '';
+    return $record['meeting'] ?? '';
 }
 
 function saveMapatoPastor($pdo, $data) {

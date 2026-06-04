@@ -445,12 +445,9 @@ function migrateCorrectReportColumns($pdo) {
     $migrated = true;
 }
 
-/** Meeting field (CM) with legacy column fallback. */
+/** Meeting field (CM) — no legacy fallback. */
 function mapatoPastorMeeting($record) {
-    if (!empty($record['meeting'])) {
-        return $record['meeting'];
-    }
-    return $record['icyacumi_cya_cms'] ?? '';
+    return $record['meeting'] ?? '';
 }
 
 function saveMapatoPastor($pdo, $data) {
@@ -506,6 +503,19 @@ function updateMapatoPastor($pdo, $id, $data) {
         $data['total'],
         $id,
     ]);
+}
+
+function getSelectedName($pdo, $table, $id) {
+    if (empty($id)) {
+        return null;
+    }
+    if (!in_array($table, ['intara', 'itorero'], true)) {
+        return null;
+    }
+    $stmt = $pdo->prepare("SELECT name FROM {$table} WHERE id = ? LIMIT 1");
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    return $row['name'] ?? null;
 }
 
 function getMapatoPastorById($pdo, $id) {

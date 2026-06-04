@@ -66,6 +66,16 @@ $header[] = 'Total';
 $header[] = 'Itariki';
 $header[] = 'Admin (yashyizeho)';
 
+function extractSum($formatted) {
+    if (empty($formatted)) {
+        return 0;
+    }
+    if (preg_match('/=\s*([\d.]+)$/', $formatted, $matches)) {
+        return (float) $matches[1];
+    }
+    return 0;
+}
+
 $excelData = [
     ['SEVENTH DAY ADVENTIST CHURCH'],
     ['MAPATO YA PASTORO'],

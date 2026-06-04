@@ -406,9 +406,15 @@ if ($pastorForm !== null) {
                     </select>
                 </div>
                 <div class="form-group<?= crPastorFieldClass($pastorForm, $pastorHighlightIds, 'cr_itorero_names') ?>" style="grid-column: 1 / -1;">
-                    <label>Amatorero (comma-separated, kuva ku wa mbere kugeza ku wa nyuma):</label>
-                    <input type="text" name="itorero_names" id="cr_itorero_names" value="<?= crPastorVal($pastorForm, 'itorero_names') ?>" placeholder="Itorero 1, Itorero 2, Itorero 3" required>
-                    <small id="cr_itorero_hint" style="color:#666;display:block;margin-top:6px;">Hitamo Intara — amazina y'Amatorero yo muri iyo Intara azagaragara hepfo.</small>
+                    <label>Amatorero (hitamo itorero rimwe cyangwa menshi, order: kuva ku wa mbere kugeza ku wa nyuma):</label>
+                    <select id="cr_itorero_select" multiple size="5" style="width:100%;min-height:120px;" disabled>
+                        <option value="" disabled>Hitamo Intara mbere...</option>
+                    </select>
+                    <input type="hidden" name="itorero_names" id="cr_itorero_names" value="<?= crPastorVal($pastorForm, 'itorero_names') ?>" required>
+                    <small id="cr_itorero_hint" style="color:#666;display:block;margin-top:6px;">Hitamo Intara — amatorero yo muri iyo Intara azagaragara aho hejuru.</small>
+                    <?php if (crPastorVal($pastorForm, 'itorero_names')): ?>
+                    <small style="color:#888;display:block;margin-top:2px;">Hitamo: <?= htmlspecialchars(crPastorVal($pastorForm, 'itorero_names')) ?></small>
+                    <?php endif; ?>
                 </div>
                 <div class="form-group<?= crPastorFieldClass($pastorForm, $pastorHighlightIds, 'cr_month') ?>">
                     <label>Ukwezi:</label>
@@ -643,22 +649,66 @@ const CR_ITORERO_BY_INTARA = <?= json_encode(array_reduce($itoreroList, function
 
 const crIntaraSelect = document.getElementById('cr_intara_id');
 const crItoreroHint = document.getElementById('cr_itorero_hint');
-if (crIntaraSelect && crItoreroHint) {
-    function updateItoreroHint() {
-        const intaraId = crIntaraSelect.value;
-        const names = CR_ITORERO_BY_INTARA[intaraId] || [];
-        if (!intaraId) {
-            crItoreroHint.textContent = 'Hitamo Intara — amazina y\'Amatorero yo muri iyo Intara azagaragara hepfo.';
-            return;
-        }
-        if (names.length === 0) {
-            crItoreroHint.textContent = 'Nta maturo ahari muri iyi Intara.';
-            return;
-        }
-        crItoreroHint.textContent = 'Amatorero muri iyi Intara (urugero): ' + names.join(', ');
+const crItoreroSelect = document.getElementById('cr_itorero_select');
+const crItoreroNames = document.getElementById('cr_itorero_names');
+
+// Tracks selection order: first clicked = first in list
+let crItoreroOrder = [];
+
+function syncItoreroHidden() {
+    // Remove deselected items from order list
+    const nowSelected = new Set(Array.from(crItoreroSelect.selectedOptions).map(o => o.value));
+    crItoreroOrder = crItoreroOrder.filter(n => nowSelected.has(n));
+    // Append newly selected items that aren't already tracked
+    nowSelected.forEach(function(name) {
+        if (!crItoreroOrder.includes(name)) crItoreroOrder.push(name);
+    });
+    crItoreroNames.value = crItoreroOrder.join(', ');
+    crItoreroHint.textContent = crItoreroOrder.length
+        ? 'Wahisemo: ' + crItoreroOrder.join(', ')
+        : 'Hitamo amatorero hejuru (Ctrl/Shift kugirango uhitemo menshi).';
+    calcPastor();
+}
+
+function updateItoreroDropdown() {
+    const intaraId = crIntaraSelect.value;
+    const names = CR_ITORERO_BY_INTARA[intaraId] || [];
+    crItoreroSelect.innerHTML = '';
+    if (!intaraId || names.length === 0) {
+        crItoreroSelect.disabled = true;
+        const opt = document.createElement('option');
+        opt.disabled = true;
+        opt.textContent = intaraId ? 'Nta maturo ahari muri iyi Intara.' : 'Hitamo Intara mbere...';
+        crItoreroSelect.appendChild(opt);
+        crItoreroNames.value = '';
+        crItoreroOrder = [];
+        crItoreroHint.textContent = intaraId ? 'Nta maturo ahari muri iyi Intara.' : 'Hitamo Intara — amatorero yo muri iyo Intara azagaragara aho hejuru.';
+        return;
     }
-    crIntaraSelect.addEventListener('change', updateItoreroHint);
-    updateItoreroHint();
+    crItoreroSelect.disabled = false;
+    // Restore previously selected values preserving their original order
+    const prev = crItoreroNames.value ? crItoreroNames.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+    crItoreroOrder = prev.filter(n => names.includes(n));
+    names.forEach(function(name) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (crItoreroOrder.includes(name)) opt.selected = true;
+        crItoreroSelect.appendChild(opt);
+    });
+    crItoreroHint.textContent = crItoreroOrder.length
+        ? 'Wahisemo: ' + crItoreroOrder.join(', ')
+        : 'Hitamo amatorero hejuru (Ctrl/Shift kugirango uhitemo menshi).';
+}
+
+if (crIntaraSelect && crItoreroSelect) {
+    crIntaraSelect.addEventListener('change', function() {
+        crItoreroNames.value = '';
+        crItoreroOrder = [];
+        updateItoreroDropdown();
+    });
+    crItoreroSelect.addEventListener('change', syncItoreroHidden);
+    updateItoreroDropdown();
 }
 
 function sumPastorSegment(val) {
